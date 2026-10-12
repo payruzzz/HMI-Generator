@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motor Monitoring System - JY Series</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #07131c;
+            --panel: #0d1c28;
+            --panel-2: #102433;
+            --border: #1c3a4d;
+            --text: #e8f4f8;
+            --muted: #7d9aab;
+            --green: #22c55e;
+            --green-2: #16a34a;
+            --amber: #f59e0b;
+            --red: #ef4444;
+            --blue: #3b82f6;
+            --cyan: #22d3ee;
+        }
+        * { box-sizing: border-box; }
+        body {
+            background: radial-gradient(1200px 600px at 20% -10%, #123047 0%, var(--bg) 45%);
+            color: var(--text);
+            font-family: Inter, Arial, sans-serif;
+            margin: 0;
+            padding: 6px 8px 4px;
+        }
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 2px 4px 4px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 4px;
+        }
+        .brand { display: flex; align-items: center; gap: 10px; }
+        .brand-icon {
+            width: 34px; height: 34px; border-radius: 8px;
+            background: linear-gradient(180deg, #1d4ed8, #0ea5e9);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px;
+        }
+        .brand h1 { font-size: 16px; letter-spacing: 0.6px; margin: 0; }
+        .brand p { margin: 2px 0 0; font-size: 11px; color: var(--muted); }
+        .header-right { display: flex; align-items: center; gap: 12px; }
+        #live-datetime { font-size: 12px; color: #cbd5e1; }
+        .sys-online { color: var(--green); font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+        .sys-online::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
+        .header-btn {
+            background: #132838; border: 1px solid var(--border); color: var(--text);
+            border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer;
+        }
+        .btn-mode { background: #1d4ed8; border: 1px solid #3b82f6; color: white; cursor: pointer; border-radius: 8px; padding: 6px 12px; font-weight: 700; font-size: 12px; }
+
+        .grid-container { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; }
+        .card, .status-box {
+            background: linear-gradient(180deg, #102433, #0c1d29);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 8px;
+            min-height: 60px;
+            display: flex; flex-direction: column; justify-content: space-between;
+            box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.05);
+        }
+        .kpi-top { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: 0.3px; }
+        .kpi-icon { width: 16px; height: 16px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; background: rgba(34,197,94,0.12); color: var(--green); }
+        .card h3, .status-box h3 { display: none; }
+        .card .value { font-size: 18px; font-weight: 800; margin: 3px 0 1px; color: var(--green); }
+        .card .limit { font-size: 9px; color: var(--muted); }
+        .card.normal { border-color: rgba(34,197,94,0.55); }
+        .card.warning { border-color: rgba(245,158,11,0.8); }
+        .card.warning .value { color: var(--amber); }
+        .card.trip { border-color: rgba(239,68,68,0.85); }
+        .card.trip .value { color: var(--red); }
+        .card.off { border-color: #475569; }
+        .card.off .value { color: #cbd5e1; }
+        .status-badge { padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 11px; text-align: center; width: fit-content; }
+        .status-normal { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid var(--green); }
+        .status-warning { background: rgba(245,158,11,0.15); color: var(--amber); border: 1px solid var(--amber); }
+        .status-trip { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid var(--red); animation: blink 0.8s infinite; }
+        .status-off { background: #1e293b; color: #fff; border: 1px solid #94a3b8; }
+        @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+        .charts-row { display: grid; grid-template-columns: 1fr 1fr 1fr 0.9fr; gap: 8px; margin-top: 8px; }
+        .chart-card, .protection-card, .bearing-condition-card, .panel, .history-section {
+            background: linear-gradient(180deg, #102433, #0c1d29);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
+        }
+        .chart-card h3, .protection-card h3, .panel h3, .history-header h3, .bearing-condition-title {
+            font-size: 10px; color: var(--muted); margin: 0 0 4px; letter-spacing: 0.4px; font-weight: 700;
+        }
+        .chart-container { position: relative; height: 125px; width: 100%; }
+        .protection-item {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 11px; margin: 4px 0; padding: 4px 0; border-bottom: 1px solid #163042;
+        }
+        .protection-item:last-child { border-bottom: none; }
+        .protection-label { color: #cfe7f1; }
+        .protect-ok { color: var(--green); font-weight: 700; }
+
+        /* --------------------------------------------------- */
+        /* MODIFIKASI LAYOUT TENGAH (3 KOLOM SEPERTI REFERENSI) */
+        /* --------------------------------------------------- */
+        .mid-layout { 
+            display: grid; 
+            grid-template-columns: 2.2fr 1.3fr 1fr; /* Pembagian 3 kolom proporsional */
+            gap: 8px; 
+            margin-top: 8px; 
+        }
+        .col-stack { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 8px; 
+        }
+        .camera-panel {
+            background: linear-gradient(180deg, #102433, #0c1d29);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+        }
+        .camera-panel h3 {
+            font-size: 10px; color: var(--muted); margin: 0 0 8px; letter-spacing: 0.4px; font-weight: 700;
+        }
+        .cam-wrapper {
+            position: relative; flex: 1; min-height: 380px; 
+            background: #000; border: 1px solid #163042; border-radius: 6px; overflow: hidden;
+        }
+        .live-badge {
+            position: absolute; top: 12px; left: 12px; background: #dc2626; color: #fff; 
+            font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 4px; 
+            display: flex; align-items: center; gap: 5px; z-index: 10;
+        }
+        .live-badge::before { content: ""; width: 6px; height: 6px; background: #fff; border-radius: 50%; animation: blink 1s infinite; }
+        .cam-time {
+            position: absolute; bottom: 12px; left: 12px; background: rgba(0,0,0,0.7); 
+            color: #fff; font-size: 10px; padding: 4px 8px; border-radius: 4px; z-index: 10; font-weight: 600;
+        }
+        
+        .panel-flex-grow { display: flex; flex-direction: column; flex: 1; }
+        .log-box {
+            flex: 1; min-height: 250px; background: #07131c; border: 1px solid #163042; 
+            border-radius: 6px; padding: 8px; font-family: ui-monospace, monospace; 
+            font-size: 10px; overflow-y: auto; color: var(--green); margin-top: 4px;
+        }
+        /* --------------------------------------------------- */
+
+        .bearing-condition-title { color: var(--green) !important; }
+        .bearing-condition-body { display: flex; align-items: center; gap: 10px; }
+        .bearing-badge {
+            width: 70px; height: 70px; min-width: 70px; border-radius: 50%;
+            border: 3px solid var(--green); color: var(--green);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: rgba(34,197,94,0.08);
+        }
+        .bearing-badge.warning { border-color: var(--amber); color: var(--amber); }
+        .bearing-badge.trip { border-color: var(--red); color: var(--red); }
+        .bearing-badge.off { border-color: #fff; color: #fff; }
+        .bearing-badge-label { font-size: 9px; font-weight: 800; }
+        .bearing-badge-icon { font-size: 14px; margin-top: 1px; }
+        .bearing-metrics { flex: 1; }
+        .bearing-metric-row, .bearing-overall {
+            display: flex; justify-content: space-between; font-size: 11px; padding: 2px 0; color: var(--muted);
+        }
+        .bearing-metric-value, .bearing-overall span { font-weight: 700; color: var(--text); }
+        .bearing-metric-value.ok, .ok { color: var(--green) !important; }
+        .bearing-metric-value.warn, .warn { color: var(--amber) !important; }
+        .bearing-metric-value.bad, .bad { color: var(--red) !important; }
+        .bearing-metric-value.off, .off { color: #fff !important; }
+
+        .control-stack { display: flex; flex-direction: column; gap: 8px; }
+        .btn {
+            width: 100%; padding: 10px 8px; font-size: 11px; font-weight: 800;
+            border-radius: 6px; border: none; cursor: pointer; color: white;
+        }
+        .btn-start { background: #16a34a; }
+        .btn-reset { background: #1d4ed8; }
+        .btn-stop { background: #dc2626; }
+        .setting-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 11px; color: var(--muted); }
+        .setting-input {
+            background: #07131c; border: 1px solid var(--border); color: var(--text);
+            padding: 4px 6px; border-radius: 4px; width: 55px; text-align: center; font-size: 11px; font-weight: 600;
+        }
+        .btn-save-settings {
+            width: 100%; background: #2563eb; border: none; color: white;
+            padding: 8px; border-radius: 6px; font-weight: 800; cursor: pointer; margin-top: 6px; font-size: 11px;
+        }
+        
+        .history-section { margin-top: 8px; }
+        .history-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+        .filter-controls { display: flex; align-items: center; gap: 6px; }
+        .time-range-dropdown {
+            background: #07131c; border: 1px solid var(--border); color: var(--text);
+            padding: 4px 6px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700;
+        }
+        .history-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .history-table-container { max-height: 130px; overflow-y: auto; border: 1px solid #163042; border-radius: 6px; }
+        table.history-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+        table.history-table th { background: #0a1823; color: var(--muted); padding: 4px 6px; position: sticky; top: 0; text-align: left; }
+        table.history-table td { padding: 4px 6px; border-bottom: 1px solid #163042; color: #dbeafe; }
+
+        .app-footer {
+            margin-top: 8px; padding: 6px 8px; border: 1px solid var(--border);
+            border-radius: 8px; display: flex; justify-content: space-between; gap: 8px;
+            color: var(--muted); font-size: 10px; background: #0c1d29;
+        }
+
+        #toast-notification {
+            visibility: hidden; min-width: 280px; background-color: #F1C40F; color: #1A222D;
+            text-align: center; border-radius: 6px; padding: 12px; position: fixed; z-index: 2000;
+            right: 20px; top: 20px; font-weight: bold; font-size: 13px; opacity: 0;
+            transition: visibility 0.5s, opacity 0.5s;
+        }
+        #toast-notification.show { visibility: visible; opacity: 1; }
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-card, .trip-modal-card, .confirm-modal-card { background: #0d1c28; border: 1px solid var(--border); border-radius: 10px; padding: 20px; width: 500px; }
+        .trip-modal-card { width: 420px; border: 2px solid var(--red); text-align: center; }
+        .confirm-modal-card { width: 420px; border: 2px solid #3b82f6; text-align: center; }
+        .modal-inputs-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .modal-input-group label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 4px; font-weight: 700; }
+        .modal-input-field { width: 100%; background: #07131c; border: 1px solid var(--border); color: #fff; padding: 8px; border-radius: 6px; }
+        .btn-apply-modal, .btn-modal-trip, .btn-modal-yes, .btn-modal-no { width: 100%; border: none; color: white; padding: 10px; border-radius: 6px; font-weight: 800; cursor: pointer; }
+        .btn-apply-modal { background: linear-gradient(135deg, #2563eb, #7c3aed); }
+        .btn-modal-trip { background: var(--red); }
+        .confirm-buttons-row { display: flex; gap: 10px; }
+        .btn-modal-yes { background: #16a34a; }
+        .btn-modal-no { background: #dc2626; }
+        .trip-modal-card h2 { color: var(--red); }
+        .confirm-modal-card h2 { color: #60a5fa; }
+    </style>
+</head>
+<body>
+    <div id="toast-notification">⚠️ PERINGATAN: Parameter mendekati batas limit aman!</div>
+
+    <div class="modal-overlay" id="tripModal">
+        <div class="trip-modal-card">
+            <h2>🚨 MOTOR TRIP / DIPAKSA MATI!</h2>
+            <p id="trip-modal-desc">Sistem mendeteksi parameter kritis melewati batas aman. Motor telah dipaksa mati. Reset alarm terlebih dahulu sebelum START MOTOR.</p>
+            <button class="btn-modal-trip" onclick="acknowledgeTrip()">MENGERTI & AKUI ALARM</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="confirmModal">
+        <div class="confirm-modal-card">
+            <h2>⚙️ KONFIRMASI PENYIMPANAN</h2>
+            <p>Apakah anda ingin mengganti dan menyimpan threshold baru ini?</p>
+            <div class="confirm-buttons-row">
+                <button class="btn-modal-no" onclick="closeConfirmModal(false)">TIDAK</button>
+                <button class="btn-modal-yes" onclick="closeConfirmModal(true)">YA</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="resetConfirmModal">
+        <div class="confirm-modal-card">
+            <h2>⚙️ KONFIRMASI RESET ALARM</h2>
+            <p>Apakah anda ingin mereset alarm dan waktu running?</p>
+            <div class="confirm-buttons-row">
+                <button class="btn-modal-no" onclick="closeResetConfirmModal(false)">TIDAK</button>
+                <button class="btn-modal-yes" onclick="closeResetConfirmModal(true)">YA</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="startBlockedModal">
+        <div class="confirm-modal-card">
+            <h2>⚠️ RESET TERLEBIH DAHULU</h2>
+            <p>Motor telah trip dan dipaksa mati karena melewati batas threshold. Tekan RESET ALARM terlebih dahulu sebelum START MOTOR.</p>
+            <div class="confirm-buttons-row">
+                <button class="btn-modal-no" onclick="closeStartBlockedModal()">TUTUP</button>
+                <button class="btn-modal-yes" onclick="goToResetFromStartBlock()">RESET ALARM</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="app-header">
+        <div class="brand">
+            <div class="brand-icon">▣</div>
+            <div>
+                <h1>MOTOR MONITORING SYSTEM</h1>
+                <p>Motor 1 - Generator (Induction Motor)</p>
+            </div>
+        </div>
+        <div class="header-right">
+            <div id="live-datetime">Loading Date...</div>
+            <div class="sys-online"><span id="system-state-label">ONLINE (FIREBASE)</span></div>
+            MODE: <button class="btn-mode" id="mode-btn" onclick="triggerControl('toggle_mode')">AUTO</button>
+        </div>
+    </div>
+
+    <div class="grid-container">
+        <div class="card" id="card-temp-de">
+            <div class="kpi-top"><span class="kpi-icon">🌡</span> DE BEARING TEMPERATURE</div>
+            <h3>DE BEARING TEMP</h3>
+            <div class="value" id="val-temp-de">-- °C</div>
+            <div class="limit" id="label-limit-temp-de">Target ≤ 80 °C</div>
+        </div>
+        <div class="card" id="card-temp-nde">
+            <div class="kpi-top"><span class="kpi-icon">🌡</span> NDE BEARING TEMPERATURE</div>
+            <h3>NDE BEARING TEMP</h3>
+            <div class="value" id="val-temp-nde">-- °C</div>
+            <div class="limit" id="label-limit-temp-nde">Target ≤ 80 °C</div>
+        </div>
+        <div class="card" id="card-rpm">
+            <div class="kpi-top"><span class="kpi-icon">⟳</span> RPM (MOTOR SPEED)</div>
+            <h3>RPM (RATED 1400)</h3>
+            <div class="value" id="val-rpm">-- RPM</div>
+            <div class="limit" id="label-limit-rpm">Target ≤ 1500</div>
+        </div>
+        <div class="card" id="card-vib">
+            <div class="kpi-top"><span class="kpi-icon">〰</span> VIBRATION</div>
+            <h3>VIBRATION</h3>
+            <div class="value" id="val-vib">-- mm/s</div>
+            <div class="limit" id="label-limit-vib">Target ≤ 5.0 mm/s</div>
+        </div>
+        <div class="card" id="card-volt">
+            <div class="kpi-top"><span class="kpi-icon">⚡</span> VOLTAGE</div>
+            <h3>VOLTAGE</h3>
+            <div class="value" id="val-volt">-- V</div>
+            <div class="limit" id="label-limit-volt">Target 220 – 240 V</div>
+        </div>
+        <div class="card" id="card-curr">
+            <div class="kpi-top"><span class="kpi-icon">A</span> CURRENT</div>
+            <h3>CURRENT</h3>
+            <div class="value" id="val-curr">-- A</div>
+            <div class="limit" id="label-limit-curr">Target ≤ 8.0 A</div>
+        </div>
+        <div class="card" id="card-runtime">
+            <div class="kpi-top"><span class="kpi-icon">⏱</span> RUNNING TIME</div>
+            <h3>RUNNING TIME</h3>
+            <div class="value" id="val-runtime">00:00:00</div>
+            <div class="limit">Target -</div>
+        </div>
+        <div class="status-box">
+            <div class="kpi-top"><span class="kpi-icon">⚙</span> MOTOR STATUS</div>
+            <h3>MOTOR STATUS</h3>
+            <div class="status-badge status-normal" id="gen-status">NORMAL</div>
+        </div>
+    </div>
+
+    <div class="charts-row">
+        <div class="chart-card">
+            <h3>DE / NDE BEARING TEMPERATURE TREND</h3>
+            <div class="chart-container"><canvas id="tempChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <h3>RPM TREND</h3>
+            <div class="chart-container"><canvas id="rpmChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <h3>VIBRATION TREND</h3>
+            <div class="chart-container"><canvas id="vibChart"></canvas></div>
+        </div>
+        <div class="protection-card">
+            <h3>PROTECTION STATUS</h3>
+            <div class="protection-item"><span class="protection-label">DE Temp. Protection</span><span id="prot-temp-de" class="protect-status protect-ok">ENABLED</span></div>
+            <div class="protection-item"><span class="protection-label">NDE Temp. Protection</span><span id="prot-temp-nde" class="protect-status protect-ok">ENABLED</span></div>
+            <div class="protection-item"><span class="protection-label">Vib. Protection</span><span id="prot-vib" class="protect-status protect-ok">ENABLED</span></div>
+            <div class="protection-item"><span class="protection-label">Over speed</span><span id="prot-rpm" class="protect-status protect-ok">ENABLED</span></div>
+            <div class="protection-item"><span class="protection-label">Voltage Protection</span><span id="prot-volt" class="protect-status protect-ok">ENABLED</span></div>
+            <div class="protection-item"><span class="protection-label">Current Protection</span><span id="prot-curr" class="protect-status protect-ok">ENABLED</span></div>
+            <div class="protection-item"><span class="protection-label">Failure Status</span><span id="prot-estop" class="protect-status protect-ok">READY</span></div>
+        </div>
+    </div>
+
+    <!-- STRUKTUR 3 KOLOM BARU -->
+    <div class="mid-layout">
+        
+        <!-- KOLOM KIRI: KAMERA -->
+        <div class="camera-panel">
+            <h3>LIVE CAMERA MONITORING</h3>
+            <div class="cam-wrapper">
+                <div class="live-badge">LIVE</div>
+                <div class="cam-time" id="cam-time-display">Loading...</div>
+                <img id="camera-stream" src="/video_feed" alt="Membaca Kamera..." style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+        </div>
+
+        <!-- KOLOM TENGAH: BEARING & LOG HISTORY -->
+        <div class="col-stack">
+            <div class="bearing-condition-card">
+                <div class="bearing-condition-title">BEARING CONDITION</div>
+                <div class="bearing-condition-body">
+                    <div class="bearing-badge" id="bearing-badge">
+                        <div class="bearing-badge-label" id="bearing-badge-label">NORMAL</div>
+                        <div class="bearing-badge-icon" id="bearing-badge-icon">✓</div>
+                    </div>
+                    <div class="bearing-metrics">
+                        <div class="bearing-metric-row"><span>DE Temp.</span><span class="bearing-metric-value ok" id="bearing-temp-de">-- °C</span></div>
+                        <div class="bearing-metric-row"><span>NDE Temp.</span><span class="bearing-metric-value ok" id="bearing-temp-nde">-- °C</span></div>
+                        <div class="bearing-metric-row"><span>Vibration</span><span class="bearing-metric-value ok" id="bearing-vib">-- mm/s</span></div>
+                        <div class="bearing-metric-row"><span>RPM</span><span class="bearing-metric-value ok" id="bearing-rpm">-- RPM</span></div>
+                        <div class="bearing-overall"><span>Overall :</span><span id="bearing-overall" class="ok">Condition Good</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel panel-flex-grow">
+                <h3>EVENT & ALARM LOG HISTORY</h3>
+                <div class="log-box" id="log-container">Loading logs...</div>
+            </div>
+        </div>
+
+        <!-- KOLOM KANAN: KONTROL & SETTING -->
+        <div class="col-stack">
+            <div class="panel">
+                <h3>MOTOR CONTROL</h3>
+                <div class="control-stack">
+                    <button class="btn btn-start" onclick="triggerControl('start')">▶ START MOTOR</button>
+                    <button class="btn btn-reset" onclick="openResetConfirmModal()">↻ RESET ALARM</button>
+                    <button class="btn btn-stop" onclick="triggerControl('stop')">■ STOP MOTOR</button>
+                </div>
+            </div>
+
+            <div class="panel panel-flex-grow">
+                <h3>MOTOR PERFORMANCE SETTINGS</h3>
+                <div class="setting-item"><span>Max. DE Temp (°C)</span><input type="number" id="input-limit-temp-de" class="setting-input" value="80"></div>
+                <div class="setting-item"><span>Max. NDE Temp (°C)</span><input type="number" id="input-limit-temp-nde" class="setting-input" value="80"></div>
+                <div class="setting-item"><span>Max. RPM Trip</span><input type="number" id="input-limit-rpm" class="setting-input" value="1500"></div>
+                <div class="setting-item"><span>Max. Vibration (mm/s)</span><input type="number" step="0.1" id="input-limit-vib" class="setting-input" value="5.0"></div>
+                <div class="setting-item"><span>Min. Voltage (V)</span><input type="number" id="input-limit-volt-min" class="setting-input" value="220"></div>
+                <div class="setting-item"><span>Max. Voltage (V)</span><input type="number" id="input-limit-volt-max" class="setting-input" value="240"></div>
+                <div class="setting-item"><span>Max. Current (A)</span><input type="number" step="0.1" id="input-limit-curr" class="setting-input" value="8.0"></div>
+                <button class="btn-save-settings" onclick="saveThresholds()" style="margin-top:auto;">SAVE SETTINGS</button>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="history-section">
+        <div class="history-header">
+            <h3>MOTOR PERFORMANCE HISTORY</h3>
+            <div class="filter-controls">
+                <select id="exportFormat" class="time-range-dropdown" style="background: #16a34a;">
+                    <option value="excel">📥 Export to Excel</option>
+                    <option value="pdf">📄 Export to PDF</option>
+                </select>
+                <button class="btn-save-settings" style="width: auto; padding: 6px 12px; margin-top: 0;" onclick="executeExport()">DOWNLOAD</button>
+                <select id="quickTimeRange" class="time-range-dropdown" onchange="handleQuickRangeChange(this.value)">
+                    <option value="custom">📅 Custom Time Range...</option>
+                    <option value="5m">Past 5m</option>
+                    <option value="15m">Past 15m</option>
+                    <option value="1h">Past 1h</option>
+                    <option value="3h">Past 3h</option>
+                    <option value="6h">Past 6h</option>
+                    <option value="12h">Past 12h</option>
+                    <option value="24h" selected>Past 24h</option>
+                    <option value="2d">Past 2d</option>
+                    <option value="7d">Past 7d</option>
+                    <option value="30d">Past 30d</option>
+                </select>
+            </div>
+        </div>
+        <div class="history-grid">
+            <div class="history-table-container">
+                <table class="history-table" id="history-excel-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>DE Temp (°C)</th>
+                            <th>NDE Temp (°C)</th>
+                            <th>RPM</th>
+                            <th>Vib (mm/s)</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table-body"></tbody>
+                </table>
+            </div>
+            <div style="position: relative; height: 180px; width: 100%;">
+                <canvas id="hourlyHistoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-footer">
+        <div>Motor Name<br><strong style="color:#fff;">Motor 1 - Generator</strong></div>
+        <div>Location<br><strong style="color:#fff;">Production Line 1</strong></div>
+        <div>Last Updated<br><strong style="color:#fff;" id="footer-updated">-</strong></div>
+        <div style="color: var(--green); font-weight: 700;">● System Normal</div>
+    </div>
+
+    <div class="modal-overlay" id="dateModal">
+        <div class="modal-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 style="margin: 0; color: #A0ABBD; font-size: 13px;">SELECT CUSTOM TIME RANGE</h3>
+                <span style="cursor: pointer; color: #E74C3C; font-weight: bold;" onclick="closeDateModal()">✕</span>
+            </div>
+            <div class="modal-inputs-row">
+                <div class="modal-input-group">
+                    <label>Start</label>
+                    <input type="text" id="modalStartDate" class="modal-input-field" placeholder="Pilih Tanggal & Waktu">
+                </div>
+                <div class="modal-input-group">
+                    <label>Stop</label>
+                    <input type="text" id="modalEndDate" class="modal-input-field" placeholder="Pilih Tanggal & Waktu">
+                </div>
+            </div>
+            <button class="btn-apply-modal" onclick="applyModalFilter()">APPLY TIME RANGE</button>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBDFFA7e9evQRudCInD0_FKbIsdlcJhIM",
+            authDomain: "hmi-generator.firebaseapp.com",
+            databaseURL: "https://hmi-generator-default-rtdb.firebaseio.com",
+            projectId: "hmi-generator",
+            storageBucket: "hmi-generator.firebasestorage.app",
+            messagingSenderId: "382482831332",
+            appId: "1:382482831332:web:3992a8de3d627f6214ddf1"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let thresholdTempDe = 80.0;
+        let thresholdTempNde = 80.0;
+        let thresholdRpm = 1500;
+        let thresholdVib = 5.0;
+        let thresholdVoltMin = 220;
+        let thresholdVoltMax = 240;
+        let thresholdCurr = 8.0;
+
+        let isDeTempTripAcknowledged = false;
+        let isNdeTempTripAcknowledged = false;
+        let isVibTripAcknowledged = false;
+        let isVoltTripAcknowledged = false;
+        let isCurrTripAcknowledged = false;
+        let isRunning = true;
+        let alarmRequiresReset = false;
+        let runtimeSeconds = 0;
+
+        let startPicker, endPicker;
+        window.addEventListener('DOMContentLoaded', () => {
+            const now = new Date();
+            const past = new Date();
+            past.setHours(now.getHours() - 24);
+
+            startPicker = flatpickr("#modalStartDate", { enableTime: true, dateFormat: "Y-m-d H:i:S", defaultDate: past, theme: "dark" });
+            endPicker = flatpickr("#modalEndDate", { enableTime: true, dateFormat: "Y-m-d H:i:S", defaultDate: now, theme: "dark" });
+
+            handleQuickRangeChange('24h');
+            updateLiveDateTime();
+            setInterval(updateLiveDateTime, 1000);
+            fetchRunningTime();
+            setInterval(fetchRunningTime, 1000);
+
+            const logBox = document.getElementById('log-container');
+            logBox.scrollTop = logBox.scrollHeight;
+        });
+
+        function updateLiveDateTime() {
+            const now = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            const text = now.toLocaleDateString('id-ID', options);
+            document.getElementById('live-datetime').innerText = text;
+            document.getElementById('footer-updated').innerText = text;
+            // Update timestamp di atas kamera
+            if(document.getElementById('cam-time-display')) {
+                document.getElementById('cam-time-display').innerText = text;
+            }
+        }
+
+        function formatRuntime(sec) {
+            const h = String(Math.floor(sec / 3600)).padStart(2, '0');
+            const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+            const s = String(Math.floor(sec % 60)).padStart(2, '0');
+            return `${h}:${m}:${s}`;
+        }
+
+        function applyRuntimeDisplay() {
+            const el = document.getElementById('val-runtime');
+            if (el) el.innerText = formatRuntime(runtimeSeconds);
+        }
+
+        function fetchRunningTime() {
+            fetch('/motor_status')
+                .then(response => {
+                    if (!response.ok) throw new Error('motor_status');
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data.running_time) throw new Error('empty');
+                    const parts = String(data.running_time).split(':').map(Number);
+                    if (parts.length === 3 && parts.every(n => !Number.isNaN(n))) {
+                        runtimeSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+                    }
+                    applyRuntimeDisplay();
+                })
+                .catch(() => {
+                    if (isRunning) runtimeSeconds += 1;
+                    applyRuntimeDisplay();
+                });
+        }
+
+        function openDateModal() { document.getElementById('dateModal').style.display = 'flex'; }
+        function closeDateModal() { document.getElementById('dateModal').style.display = 'none'; }
+
+        function formatDateToString(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            const h = String(date.getHours()).padStart(2, '0');
+            const min = String(date.getMinutes()).padStart(2, '0');
+            const s = String(date.getSeconds()).padStart(2, '0');
+            return `${y}-${m}-${d} ${h}:${min}:${s}`;
+        }
+
+        function fetchHistoryData(startStr, endStr) {
+            fetch(`/history?start=${encodeURIComponent(startStr)}&end=${encodeURIComponent(endStr)}`)
+                .then(response => response.json())
+                .then(data => {
+                    hourlyChart.data.labels = data.labels;
+                    hourlyChart.data.datasets[0].data = data.temp_de;
+                    hourlyChart.data.datasets[1].data = data.temp_nde;
+                    hourlyChart.data.datasets[2].data = data.rpm.map(val => val / 10);
+                    hourlyChart.data.datasets[3].data = data.vib;
+                    hourlyChart.update();
+                })
+                .catch(error => console.error('Error fetching history:', error));
+        }
+
+        function executeExport() {
+            const format = document.getElementById('exportFormat').value;
+            if (format === 'excel') exportTableToExcel();
+            else if (format === 'pdf') exportTableToPDF();
+        }
+
+        function exportTableToExcel() {
+            const table = document.getElementById("history-excel-table");
+            if (!table || table.rows.length <= 1) { alert("Tidak ada data riwayat untuk diexport!"); return; }
+            const rangeSelect = document.getElementById('quickTimeRange');
+            const selectedText = rangeSelect.options[rangeSelect.selectedIndex].text;
+            const startVal = document.getElementById('modalStartDate').value;
+            const endVal = document.getElementById('modalEndDate').value;
+            const rangeInfo = (rangeSelect.value === 'custom') ? `Custom Range (${startVal} s/d ${endVal})` : `Range: ${selectedText}`;
+            const data = [
+                { "Date": "MOTOR PERFORMANCE HISTORY REPORT", "Time": "", "DE Temp (°C)": "", "NDE Temp (°C)": "", "RPM": "", "Vib (mm/s)": "", "Status": "" },
+                { "Date": `Export Period / Filter: ${rangeInfo}`, "Time": "", "DE Temp (°C)": "", "NDE Temp (°C)": "", "RPM": "", "Vib (mm/s)": "", "Status": "" },
+                { "Date": `Generated on: ${new Date().toLocaleString('id-ID')}`, "Time": "", "DE Temp (°C)": "", "NDE Temp (°C)": "", "RPM": "", "Vib (mm/s)": "", "Status": "" },
+                { "Date": "", "Time": "", "DE Temp (°C)": "", "NDE Temp (°C)": "", "RPM": "", "Vib (mm/s)": "", "Status": "" },
+                { "Date": "Date", "Time": "Time", "DE Temp (°C)": "DE Temp (°C)", "NDE Temp (°C)": "NDE Temp (°C)", "RPM": "RPM", "Vib (mm/s)": "Vib (mm/s)", "Status": "Status" }
+            ];
+            const rows = table.querySelectorAll("tr");
+            rows.forEach((row, rowIndex) => {
+                if (rowIndex === 0) return;
+                const cols = row.querySelectorAll("td");
+                if (cols.length >= 7) {
+                    data.push({
+                        "Date": cols[0].innerText.trim(),
+                        "Time": cols[1].innerText.trim(),
+                        "DE Temp (°C)": cols[2].innerText.trim(),
+                        "NDE Temp (°C)": cols[3].innerText.trim(),
+                        "RPM": cols[4].innerText.trim(),
+                        "Vib (mm/s)": cols[5].innerText.trim(),
+                        "Status": cols[6].innerText.trim()
+                    });
+                }
+            });
+            const ws = XLSX.utils.json_to_sheet(data, { skipHeader: true });
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } },
+                { s: { r: 2, c: 0 }, e: { r: 2, c: 6 } }
+            ];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Motor History");
+            XLSX.writeFile(wb, `Motor_History_${rangeSelect.value.toUpperCase()}_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        function exportTableToPDF() {
+            const table = document.getElementById("history-excel-table");
+            if (!table || table.rows.length <= 1) { alert("Tidak ada data riwayat untuk diexport ke PDF!"); return; }
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const rangeSelect = document.getElementById('quickTimeRange');
+            const selectedText = rangeSelect.options[rangeSelect.selectedIndex].text;
+            const startVal = document.getElementById('modalStartDate').value;
+            const endVal = document.getElementById('modalEndDate').value;
+            const rangeInfo = (rangeSelect.value === 'custom') ? `Custom Range (${startVal} s/d ${endVal})` : `Range: ${selectedText}`;
+            doc.setFontSize(14); doc.text("MOTOR PERFORMANCE HISTORY REPORT", 14, 15);
+            doc.setFontSize(10); doc.setTextColor(100, 100, 100);
+            doc.text(`Export Period / Filter: ${rangeInfo}`, 14, 22);
+            doc.text(`Generated on: ${new Date().toLocaleString('id-ID')}`, 14, 27);
+            const rows = table.querySelectorAll("tr");
+            const tableData = [];
+            rows.forEach((row, rowIndex) => {
+                if (rowIndex === 0) return;
+                const cols = row.querySelectorAll("td");
+                if (cols.length >= 7) {
+                    tableData.push([cols[0].innerText.trim(), cols[1].innerText.trim(), cols[2].innerText.trim(), cols[3].innerText.trim(), cols[4].innerText.trim(), cols[5].innerText.trim(), cols[6].innerText.trim()]);
+                }
+            });
+            doc.autoTable({ startY: 33, head: [['Date', 'Time', 'DE Temp (°C)', 'NDE Temp (°C)', 'RPM', 'Vib (mm/s)', 'Status']], body: tableData, theme: 'grid', headStyles: { fillColor: [41, 128, 185] }, styles: { fontSize: 8, cellPadding: 3 } });
+            doc.save(`Motor_History_${rangeSelect.value.toUpperCase()}_${new Date().toISOString().slice(0,10)}.pdf`);
+        }
+
+        function handleQuickRangeChange(val) {
+            if (val === 'custom') { openDateModal(); return; }
+            const now = new Date(); const past = new Date(); let hoursToSubtract = 24;
+            if (val === '5m') hoursToSubtract = 5 / 60;
+            else if (val === '15m') hoursToSubtract = 15 / 60;
+            else if (val === '1h') hoursToSubtract = 1;
+            else if (val === '3h') hoursToSubtract = 3;
+            else if (val === '6h') hoursToSubtract = 6;
+            else if (val === '12h') hoursToSubtract = 12;
+            else if (val === '24h') hoursToSubtract = 24;
+            else if (val === '2d') hoursToSubtract = 48;
+            else if (val === '7d') hoursToSubtract = 168;
+            else if (val === '30d') hoursToSubtract = 720;
+            past.setTime(now.getTime() - (hoursToSubtract * 60 * 60 * 1000));
+            startPicker.setDate(past); endPicker.setDate(now);
+            fetchHistoryData(formatDateToString(past), formatDateToString(now));
+        }
+
+        function applyModalFilter() {
+            const startVal = document.getElementById('modalStartDate').value;
+            const endVal = document.getElementById('modalEndDate').value;
+            if (!startVal || !endVal) { alert("Harap pilih waktu Start dan Stop dengan lengkap!"); return; }
+            closeDateModal();
+            fetchHistoryData(startVal, endVal);
+        }
+
+        function saveThresholds() { document.getElementById('confirmModal').style.display = 'flex'; }
+
+        function closeConfirmModal(isYes) {
+            if (isYes) {
+                const voltMin = parseFloat(document.getElementById('input-limit-volt-min').value) || 220;
+                const voltMax = parseFloat(document.getElementById('input-limit-volt-max').value) || 240;
+                if (voltMin >= voltMax) {
+                    alert("Min. Voltage harus lebih kecil dari Max. Voltage!");
+                    return;
+                }
+            }
+            document.getElementById('confirmModal').style.display = 'none';
+            if (isYes) {
+                thresholdTempDe = parseFloat(document.getElementById('input-limit-temp-de').value) || 80.0;
+                thresholdTempNde = parseFloat(document.getElementById('input-limit-temp-nde').value) || 80.0;
+                thresholdRpm = parseFloat(document.getElementById('input-limit-rpm').value) || 1500;
+                thresholdVib = parseFloat(document.getElementById('input-limit-vib').value) || 5.0;
+                thresholdVoltMin = parseFloat(document.getElementById('input-limit-volt-min').value) || 220;
+                thresholdVoltMax = parseFloat(document.getElementById('input-limit-volt-max').value) || 240;
+                thresholdCurr = parseFloat(document.getElementById('input-limit-curr').value) || 8.0;
+                document.getElementById('label-limit-temp-de').innerText = `Target ≤ ${thresholdTempDe} °C`;
+                document.getElementById('label-limit-temp-nde').innerText = `Target ≤ ${thresholdTempNde} °C`;
+                document.getElementById('label-limit-rpm').innerText = `Target ≤ ${thresholdRpm}`;
+                document.getElementById('label-limit-vib').innerText = `Target ≤ ${thresholdVib} mm/s`;
+                document.getElementById('label-limit-volt').innerText = `Target ${thresholdVoltMin} – ${thresholdVoltMax} V`;
+                document.getElementById('label-limit-curr').innerText = `Target ≤ ${thresholdCurr} A`;
+                tempChart.options.plugins.annotation.annotations.lineThresholdDe.yMin = thresholdTempDe;
+                tempChart.options.plugins.annotation.annotations.lineThresholdDe.yMax = thresholdTempDe;
+                tempChart.options.plugins.annotation.annotations.lineThresholdDe.label.content = 'DE: ' + thresholdTempDe;
+                tempChart.options.plugins.annotation.annotations.lineThresholdNde.yMin = thresholdTempNde;
+                tempChart.options.plugins.annotation.annotations.lineThresholdNde.yMax = thresholdTempNde;
+                tempChart.options.plugins.annotation.annotations.lineThresholdNde.label.content = 'NDE: ' + thresholdTempNde;
+                tempChart.update();
+                rpmChart.options.plugins.annotation.annotations.lineThreshold.yMin = thresholdRpm;
+                rpmChart.options.plugins.annotation.annotations.lineThreshold.yMax = thresholdRpm;
+                rpmChart.options.plugins.annotation.annotations.lineThreshold.label.content = 'Limit: ' + thresholdRpm;
+                rpmChart.update();
+                vibChart.options.plugins.annotation.annotations.lineThreshold.yMin = thresholdVib;
+                vibChart.options.plugins.annotation.annotations.lineThreshold.yMax = thresholdVib;
+                vibChart.options.plugins.annotation.annotations.lineThreshold.label.content = 'Limit: ' + thresholdVib;
+                vibChart.update();
+                alert("Threshold dan garis batas grafik berhasil diperbarui!");
+            } else {
+                document.getElementById('input-limit-temp-de').value = thresholdTempDe;
+                document.getElementById('input-limit-temp-nde').value = thresholdTempNde;
+                document.getElementById('input-limit-rpm').value = thresholdRpm;
+                document.getElementById('input-limit-vib').value = thresholdVib;
+                document.getElementById('input-limit-volt-min').value = thresholdVoltMin;
+                document.getElementById('input-limit-volt-max').value = thresholdVoltMax;
+                document.getElementById('input-limit-curr').value = thresholdCurr;
+            }
+        }
+
+        function openResetConfirmModal() {
+            document.getElementById('resetConfirmModal').style.display = 'flex';
+        }
+
+        function closeResetConfirmModal(isYes) {
+            document.getElementById('resetConfirmModal').style.display = 'none';
+            if (isYes) {
+                triggerControl('reset');
+            }
+        }
+
+        function closeStartBlockedModal() {
+            document.getElementById('startBlockedModal').style.display = 'none';
+        }
+
+        function goToResetFromStartBlock() {
+            closeStartBlockedModal();
+            openResetConfirmModal();
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById("toast-notification");
+            toast.innerText = message; toast.className = "show";
+            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3500);
+        }
+
+        function acknowledgeTrip() {
+            document.getElementById('tripModal').style.display = 'none';
+            const currentTempDe = parseFloat(document.getElementById('val-temp-de').innerText);
+            const currentTempNde = parseFloat(document.getElementById('val-temp-nde').innerText);
+            const currentVib = parseFloat(document.getElementById('val-vib').innerText);
+            if (currentTempDe <= thresholdTempDe) isDeTempTripAcknowledged = true;
+            if (currentTempNde <= thresholdTempNde) isNdeTempTripAcknowledged = true;
+            if (currentVib <= thresholdVib) isVibTripAcknowledged = true;
+            const currentVolt = parseFloat(document.getElementById('val-volt').innerText);
+            const currentCurr = parseFloat(document.getElementById('val-curr').innerText);
+            if (currentVolt >= thresholdVoltMin && currentVolt <= thresholdVoltMax) isVoltTripAcknowledged = true;
+            if (currentCurr <= thresholdCurr) isCurrTripAcknowledged = true;
+        }
+
+        function metricState(value, threshold, warnRatio) {
+            if (value > threshold) return { cls: 'bad', text: 'Trip' };
+            if (value >= (threshold * warnRatio)) return { cls: 'warn', text: 'Warning' };
+            return { cls: 'ok', text: 'Normal' };
+        }
+
+        function updateBearingCondition(isOff, tempDeVal, tempNdeVal, rpmVal, vibVal) {
+            const badge = document.getElementById('bearing-badge');
+            const badgeLabel = document.getElementById('bearing-badge-label');
+            const badgeIcon = document.getElementById('bearing-badge-icon');
+            const elTempDe = document.getElementById('bearing-temp-de');
+            const elTempNde = document.getElementById('bearing-temp-nde');
+            const elVib = document.getElementById('bearing-vib');
+            const elRpm = document.getElementById('bearing-rpm');
+            const elOverall = document.getElementById('bearing-overall');
+            if (isOff) {
+                badge.className = 'bearing-badge off';
+                badgeLabel.innerText = 'OFF'; badgeIcon.innerText = '–';
+                elTempDe.className = 'bearing-metric-value off';
+                elTempNde.className = 'bearing-metric-value off';
+                elVib.className = 'bearing-metric-value off'; elRpm.className = 'bearing-metric-value off';
+                elTempDe.innerText = '-- °C'; elTempNde.innerText = '-- °C';
+                elVib.innerText = '-- mm/s'; elRpm.innerText = '-- RPM';
+                elOverall.className = 'off'; elOverall.innerText = 'Standby';
+                return;
+            }
+            const stTempDe = metricState(tempDeVal, thresholdTempDe, 0.90);
+            const stTempNde = metricState(tempNdeVal, thresholdTempNde, 0.90);
+            const stRpm = metricState(rpmVal, thresholdRpm, 0.95);
+            const stVib = metricState(vibVal, thresholdVib, 0.85);
+            elTempDe.className = 'bearing-metric-value ' + stTempDe.cls;
+            elTempNde.className = 'bearing-metric-value ' + stTempNde.cls;
+            elVib.className = 'bearing-metric-value ' + stVib.cls;
+            elRpm.className = 'bearing-metric-value ' + stRpm.cls;
+            elTempDe.innerText = `${tempDeVal.toFixed(1)} °C`;
+            elTempNde.innerText = `${tempNdeVal.toFixed(1)} °C`;
+            elVib.innerText = `${vibVal.toFixed(1)} mm/s`;
+            elRpm.innerText = `${rpmVal} RPM`;
+            const ranks = { ok: 0, warn: 1, bad: 2 };
+            const worst = [stTempDe, stTempNde, stRpm, stVib].reduce((a, b) => ranks[b.cls] > ranks[a.cls] ? b : a);
+            if (worst.cls === 'bad') {
+                badge.className = 'bearing-badge trip'; badgeLabel.innerText = 'TRIP'; badgeIcon.innerText = '!';
+                elOverall.className = 'bad'; elOverall.innerText = 'Condition Poor';
+            } else if (worst.cls === 'warn') {
+                badge.className = 'bearing-badge warning'; badgeLabel.innerText = 'WARNING'; badgeIcon.innerText = '!';
+                elOverall.className = 'warn'; elOverall.innerText = 'Condition Fair';
+            } else {
+                badge.className = 'bearing-badge'; badgeLabel.innerText = 'NORMAL'; badgeIcon.innerText = '✓';
+                elOverall.className = 'ok'; elOverall.innerText = 'Condition Good';
+            }
+        }
+
+        const sharedOptions = (minVal, maxVal, thresholdValue) => ({
+            responsive: true, maintainAspectRatio: false, animation: { duration: 500 },
+            plugins: {
+                legend: { display: false },
+                annotation: {
+                    annotations: {
+                        lineThreshold: {
+                            type: 'line', yMin: thresholdValue, yMax: thresholdValue,
+                            borderColor: '#E74C3C', borderWidth: 2, borderDash: [4, 4],
+                            label: { content: 'Limit: ' + thresholdValue, enabled: true, position: 'end', backgroundColor: 'rgba(231, 76, 60, 0.8)', font: { size: 9 } }
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: { min: minVal, max: maxVal, grid: { color: '#163042' }, ticks: { color: '#9fb6c4', font: { size: 10 } } },
+                x: { grid: { display: false }, ticks: { color: '#9fb6c4', font: { size: 10 } } }
+            }
+        });
+
+        const tempChartOptions = sharedOptions(0, 100, thresholdTempDe);
+        tempChartOptions.plugins.legend = { display: true, labels: { boxWidth: 10, font: { size: 9 }, color: '#FFFFFF' } };
+        tempChartOptions.plugins.annotation.annotations = {
+            lineThresholdDe: {
+                type: 'line', yMin: thresholdTempDe, yMax: thresholdTempDe,
+                borderColor: '#E67E22', borderWidth: 2, borderDash: [4, 4],
+                label: { content: 'DE: ' + thresholdTempDe, enabled: true, position: 'start', backgroundColor: 'rgba(230, 126, 34, 0.8)', font: { size: 9 } }
+            },
+            lineThresholdNde: {
+                type: 'line', yMin: thresholdTempNde, yMax: thresholdTempNde,
+                borderColor: '#22d3ee', borderWidth: 2, borderDash: [4, 4],
+                label: { content: 'NDE: ' + thresholdTempNde, enabled: true, position: 'end', backgroundColor: 'rgba(34, 211, 238, 0.8)', font: { size: 9 } }
+            }
+        };
+        const tempChart = new Chart(document.getElementById('tempChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: Array(15).fill(''),
+                datasets: [
+                    { label: 'DE', data: Array(15).fill(0), borderColor: '#E67E22', tension: 0.4, borderWidth: 2, pointRadius: 0, fill: false },
+                    { label: 'NDE', data: Array(15).fill(0), borderColor: '#22d3ee', tension: 0.4, borderWidth: 2, pointRadius: 0, fill: false }
+                ]
+            },
+            options: tempChartOptions
+        });
+        const rpmChart = new Chart(document.getElementById('rpmChart').getContext('2d'), {
+            type: 'line',
+            data: { labels: Array(15).fill(''), datasets: [{ data: Array(15).fill(0), borderColor: '#2ECC71', tension: 0.4, borderWidth: 2, pointRadius: 0, fill: false }] },
+            options: sharedOptions(0, 2000, thresholdRpm)
+        });
+        const vibChart = new Chart(document.getElementById('vibChart').getContext('2d'), {
+            type: 'line',
+            data: { labels: Array(15).fill(''), datasets: [{ data: Array(15).fill(0), borderColor: '#3498DB', tension: 0.4, borderWidth: 2, pointRadius: 0, fill: false }] },
+            options: sharedOptions(0, 10, thresholdVib)
+        });
+        const hourlyChart = new Chart(document.getElementById('hourlyHistoryChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: ['Start', 'Q1', 'Mid', 'Q2', 'End'],
+                datasets: [
+                    { label: 'DE Temp (°C)', data: [45, 52, 58, 65, 60], borderColor: '#E67E22', tension: 0.3, yAxisID: 'y' },
+                    { label: 'NDE Temp (°C)', data: [43, 50, 56, 62, 58], borderColor: '#22d3ee', tension: 0.3, yAxisID: 'y' },
+                    { label: 'RPM (x10)', data: [138, 140, 142, 139, 140], borderColor: '#2ECC71', tension: 0.3, yAxisID: 'y1' },
+                    { label: 'Vib (mm/s)', data: [2.1, 2.5, 3.2, 4.0, 3.5], borderColor: '#3498DB', tension: 0.3, yAxisID: 'y2' }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 }, color: '#FFFFFF' } } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: '#9fb6c4', font: { size: 10 } } },
+                    y: { type: 'linear', display: true, position: 'left', min: 0, max: 100, grid: { color: '#163042' }, ticks: { color: '#9fb6c4', font: { size: 10 } } },
+                    y1: { type: 'linear', display: false, min: 0, max: 200 },
+                    y2: { type: 'linear', display: false, min: 0, max: 10 }
+                }
+            }
+        });
+
+        let systemMode = "AUTO";
+        let logMessages = [
+            `<span style="color: #2ECC71;">[00:00:01] System initialized in AUTO mode.</span>`,
+            `<span style="color: #2ECC71;">[00:00:02] Motor JY Series started successfully.</span>`
+        ];
+
+        function addLiveHistoryRow(timestamp, tempDe, tempNde, rpm, vib, status) {
+            const tableBody = document.getElementById('history-table-body');
+            const statusColor = (status === 'NORMAL') ? '#22c55e' : '#ef4444';
+            const parts = timestamp.split(" ");
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `<td>${parts[0] || ""}</td><td>${parts[1] || ""}</td><td>${tempDe} °C</td><td>${tempNde} °C</td><td>${rpm}</td><td>${vib}</td><td style="color: ${statusColor}; font-weight: bold;">${status}</td>`;
+            tableBody.appendChild(newRow);
+            if (tableBody.rows.length > 15) tableBody.deleteRow(0);
+            document.querySelector('.history-table-container').scrollTop = document.querySelector('.history-table-container').scrollHeight;
+        }
+
+        function simulateLiveData() {
+            const cardTempDe = document.getElementById('card-temp-de');
+            const cardTempNde = document.getElementById('card-temp-nde');
+            const cardRpm = document.getElementById('card-rpm');
+            const cardVib = document.getElementById('card-vib');
+            const cardVolt = document.getElementById('card-volt');
+            const cardCurr = document.getElementById('card-curr');
+            const cardRuntime = document.getElementById('card-runtime');
+            const statusBadge = document.getElementById('gen-status');
+            const systemStateLabel = document.getElementById('system-state-label');
+            cardTempDe.className = "card"; cardTempNde.className = "card"; cardRpm.className = "card"; cardVib.className = "card";
+            cardVolt.className = "card"; cardCurr.className = "card"; cardRuntime.className = "card";
+            const currentTimeStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
+
+            if (!isRunning) {
+                document.getElementById('val-temp-de').innerText = '-- °C';
+                document.getElementById('val-temp-nde').innerText = '-- °C';
+                document.getElementById('val-rpm').innerText = '-- RPM';
+                document.getElementById('val-vib').innerText = '-- mm/s';
+                document.getElementById('val-volt').innerText = '-- V';
+                document.getElementById('val-curr').innerText = '-- A';
+                cardTempDe.classList.add("off"); cardTempNde.classList.add("off"); cardRpm.classList.add("off"); cardVib.classList.add("off");
+                cardVolt.classList.add("off"); cardCurr.classList.add("off"); cardRuntime.classList.add("off");
+                if (alarmRequiresReset) {
+                    statusBadge.innerText = "TRIP / LOCKED"; statusBadge.className = "status-badge status-trip";
+                    systemStateLabel.innerText = "TRIP (RESET REQUIRED)"; systemStateLabel.style.color = "#E74C3C";
+                } else {
+                    statusBadge.innerText = "STANDBY"; statusBadge.className = "status-badge status-off";
+                    systemStateLabel.innerText = "OFFLINE (STOPPED)"; systemStateLabel.style.color = "#E74C3C";
+                }
+                document.getElementById('mode-btn').innerText = systemMode;
+                updateBearingCondition(true, 0, 0, 0, 0);
+                db.ref('motor_status').set({ temp_de: 0, temp_nde: 0, rpm: 0, vib: 0, status: alarmRequiresReset ? "TRIP_LOCKED" : "STOPPED", timestamp: new Date().toISOString() });
+                return;
+            }
+
+            systemStateLabel.innerText = "ONLINE (FIREBASE)"; systemStateLabel.style.color = "#22c55e";
+            let dummyTempDe = (65 + Math.random() * 10).toFixed(1);
+            let dummyTempNde = (63 + Math.random() * 10).toFixed(1);
+            let dummyRpm = Math.floor(1380 + Math.random() * 40);
+            let dummyVib = (3.5 + Math.random() * 1.5).toFixed(1);
+            let dummyVolt = Math.round((thresholdVoltMin + thresholdVoltMax) / 2 + (Math.random() * 6 - 3));
+            let dummyCurr = (thresholdCurr * 0.62 + Math.random() * (thresholdCurr * 0.05)).toFixed(2);
+            document.getElementById('val-temp-de').innerText = dummyTempDe + ' °C';
+            document.getElementById('val-temp-nde').innerText = dummyTempNde + ' °C';
+            document.getElementById('val-rpm').innerText = dummyRpm + ' RPM';
+            document.getElementById('val-vib').innerText = dummyVib + ' mm/s';
+            document.getElementById('val-volt').innerText = dummyVolt + ' V';
+            document.getElementById('val-curr').innerText = dummyCurr + ' A';
+            document.getElementById('mode-btn').innerText = systemMode;
+            db.ref('motor_status').set({ temp_de: parseFloat(dummyTempDe), temp_nde: parseFloat(dummyTempNde), rpm: dummyRpm, vib: parseFloat(dummyVib), status: "RUNNING", timestamp: new Date().toISOString() });
+
+            let tripMessages = [];
+            let tempDeVal = parseFloat(dummyTempDe);
+            if (tempDeVal > thresholdTempDe) { cardTempDe.classList.add("trip"); if (!isDeTempTripAcknowledged) tripMessages.push(`Suhu DE Bearing Terlalu Tinggi: ${dummyTempDe}°C (Limit: ${thresholdTempDe}°C)`); }
+            else if (tempDeVal >= (thresholdTempDe * 0.90)) { cardTempDe.classList.add("warning"); showToast(`⚠️ PERINGATAN: Suhu DE Bearing Mendekati Batas (${dummyTempDe}°C)!`); }
+            else { cardTempDe.classList.add("normal"); isDeTempTripAcknowledged = false; }
+
+            let tempNdeVal = parseFloat(dummyTempNde);
+            if (tempNdeVal > thresholdTempNde) { cardTempNde.classList.add("trip"); if (!isNdeTempTripAcknowledged) tripMessages.push(`Suhu NDE Bearing Terlalu Tinggi: ${dummyTempNde}°C (Limit: ${thresholdTempNde}°C)`); }
+            else if (tempNdeVal >= (thresholdTempNde * 0.90)) { cardTempNde.classList.add("warning"); showToast(`⚠️ PERINGATAN: Suhu NDE Bearing Mendekati Batas (${dummyTempNde}°C)!`); }
+            else { cardTempNde.classList.add("normal"); isNdeTempTripAcknowledged = false; }
+
+            let rpmVal = parseFloat(dummyRpm);
+            if (rpmVal > thresholdRpm) { cardRpm.classList.add("trip"); tripMessages.push(`RPM Motor Berlebihan (Overspeed): ${dummyRpm} RPM (Limit: ${thresholdRpm} RPM)`); }
+            else if (rpmVal >= (thresholdRpm * 0.95)) { cardRpm.classList.add("warning"); }
+            else { cardRpm.classList.add("normal"); }
+
+            let vibVal = parseFloat(dummyVib);
+            if (vibVal > thresholdVib) { cardVib.classList.add("trip"); if (!isVibTripAcknowledged) tripMessages.push(`Getaran Motor Berlebihan: ${dummyVib} mm/s (Limit: ${thresholdVib} mm/s)`); }
+            else if (vibVal >= (thresholdVib * 0.85)) { cardVib.classList.add("warning"); showToast(`⚠️ PERINGATAN: Getaran Mendekati Batas (${dummyVib} mm/s)!`); }
+            else { cardVib.classList.add("normal"); isVibTripAcknowledged = false; }
+
+            let voltVal = parseFloat(dummyVolt);
+            const voltWarnBand = Math.max(2, (thresholdVoltMax - thresholdVoltMin) * 0.1);
+            if (voltVal < thresholdVoltMin || voltVal > thresholdVoltMax) {
+                cardVolt.classList.add("trip");
+                if (!isVoltTripAcknowledged) {
+                    if (voltVal < thresholdVoltMin) tripMessages.push(`Undervoltage: ${dummyVolt} V (Min: ${thresholdVoltMin} V)`);
+                    else tripMessages.push(`Overvoltage: ${dummyVolt} V (Max: ${thresholdVoltMax} V)`);
+                }
+            } else if (voltVal <= thresholdVoltMin + voltWarnBand || voltVal >= thresholdVoltMax - voltWarnBand) {
+                cardVolt.classList.add("warning");
+                showToast(`⚠️ PERINGATAN: Voltage mendekati batas (${dummyVolt} V)!`);
+            } else { cardVolt.classList.add("normal"); isVoltTripAcknowledged = false; }
+
+            let currVal = parseFloat(dummyCurr);
+            if (currVal > thresholdCurr) { cardCurr.classList.add("trip"); if (!isCurrTripAcknowledged) tripMessages.push(`Overcurrent: ${dummyCurr} A (Limit: ${thresholdCurr} A)`); }
+            else if (currVal >= (thresholdCurr * 0.85)) { cardCurr.classList.add("warning"); showToast(`⚠️ PERINGATAN: Current Mendekati Batas (${dummyCurr} A)!`); }
+            else { cardCurr.classList.add("normal"); isCurrTripAcknowledged = false; }
+
+            cardRuntime.classList.add("normal");
+            updateBearingCondition(false, tempDeVal, tempNdeVal, rpmVal, vibVal);
+
+            if (tempDeVal > thresholdTempDe || tempNdeVal > thresholdTempNde || rpmVal > thresholdRpm || vibVal > thresholdVib || voltVal < thresholdVoltMin || voltVal > thresholdVoltMax || currVal > thresholdCurr) {
+                statusBadge.innerText = "TRIP / ALARM"; statusBadge.className = "status-badge status-trip";
+                addLiveHistoryRow(currentTimeStr, dummyTempDe, dummyTempNde, dummyRpm, dummyVib, "STOPPED");
+                if (tripMessages.length > 0) {
+                    document.getElementById('trip-modal-desc').innerText = tripMessages.join("\n\n");
+                    if (isRunning) {
+                        isRunning = false;
+                        alarmRequiresReset = true;
+                        fetch('/control?cmd=trip').then(r => r.text()).catch(e => console.error('Error:', e));
+                        const timeStr = new Date().toLocaleTimeString();
+                        logMessages.push(`<span style="color: #E74C3C;">[${timeStr}] AUTO SHUTDOWN: Motor dipaksa mati karena melewati threshold. Reset alarm sebelum START.</span>`);
+                        if (logMessages.length > 30) logMessages.shift();
+                        const logContainer = document.getElementById('log-container');
+                        logContainer.innerHTML = logMessages.join('<br>');
+                        logContainer.scrollTop = logContainer.scrollHeight;
+                    }
+                    document.getElementById('tripModal').style.display = 'flex';
+                }
+            } else if (tempDeVal >= (thresholdTempDe * 0.90) || tempNdeVal >= (thresholdTempNde * 0.90) || rpmVal >= (thresholdRpm * 0.95) || vibVal >= (thresholdVib * 0.85) || voltVal <= thresholdVoltMin + voltWarnBand || voltVal >= thresholdVoltMax - voltWarnBand || currVal >= (thresholdCurr * 0.85)) {
+                statusBadge.innerText = "WARNING"; statusBadge.className = "status-badge status-warning";
+                addLiveHistoryRow(currentTimeStr, dummyTempDe, dummyTempNde, dummyRpm, dummyVib, "NORMAL");
+            } else {
+                statusBadge.innerText = "RUNNING"; statusBadge.className = "status-badge status-normal";
+                addLiveHistoryRow(currentTimeStr, dummyTempDe, dummyTempNde, dummyRpm, dummyVib, "NORMAL");
+            }
+
+            tempChart.data.datasets[0].data.shift(); tempChart.data.datasets[0].data.push(dummyTempDe);
+            tempChart.data.datasets[1].data.shift(); tempChart.data.datasets[1].data.push(dummyTempNde);
+            tempChart.update('none');
+            rpmChart.data.datasets[0].data.shift(); rpmChart.data.datasets[0].data.push(dummyRpm); rpmChart.update('none');
+            vibChart.data.datasets[0].data.shift(); vibChart.data.datasets[0].data.push(dummyVib); vibChart.update('none');
+        }
+
+        function triggerControl(cmd) {
+            const timeStr = new Date().toLocaleTimeString();
+            if (cmd === 'start' && alarmRequiresReset) {
+                document.getElementById('startBlockedModal').style.display = 'flex';
+                return;
+            }
+            fetch(`/control?cmd=${cmd}`).then(r => r.text()).then(result => console.log(result)).catch(e => console.error('Error:', e));
+            if (cmd === 'start') {
+                isRunning = true;
+                logMessages.push(`<span style="color: #2ECC71;">[${timeStr}] Motor manually STARTED.</span>`);
+            } else if (cmd === 'stop') {
+                isRunning = false;
+                document.getElementById('tripModal').style.display = 'none';
+                addLiveHistoryRow(new Date().toISOString().replace('T', ' ').substring(0, 19), "0.0", "0.0", "0", "0.0", "STOPPED");
+                logMessages.push(`<span style="color: #E74C3C;">[${timeStr}] Motor manually STOPPED.</span>`);
+            } else if (cmd === 'reset') {
+                isDeTempTripAcknowledged = true; isNdeTempTripAcknowledged = true; isVibTripAcknowledged = true;
+                isVoltTripAcknowledged = true; isCurrTripAcknowledged = true;
+                alarmRequiresReset = false;
+                document.getElementById('tripModal').style.display = 'none';
+                document.getElementById('startBlockedModal').style.display = 'none';
+                runtimeSeconds = 0;
+                applyRuntimeDisplay();
+                logMessages.push(`<span style="color: #F1C40F;">[${timeStr}] Alarms RESET by operator. Running time reset to 00:00:00. Start motor diizinkan.</span>`);
+            } else if (cmd === 'toggle_mode') {
+                systemMode = systemMode === "AUTO" ? "MANUAL" : "AUTO";
+                logMessages.push(`<span style="color: #3498DB;">[${timeStr}] Mode switched to ${systemMode}.</span>`);
+            }
+            if (logMessages.length > 30) logMessages.shift();
+            const logContainer = document.getElementById('log-container');
+            logContainer.innerHTML = logMessages.join('<br>');
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        setInterval(simulateLiveData, 2000);
+    </script>
+</body>
+</html>
