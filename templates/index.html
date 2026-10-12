@@ -39,6 +39,11 @@
             margin: 0;
             padding: 6px 8px 4px;
         }
+        .app-frame {
+            border: 1px solid var(--border); border-radius: 18px;
+            padding: 8px 10px 6px; background: rgba(7, 19, 28, 0.55);
+            max-width: 1920px; margin: 0 auto;
+        }
         .app-header {
             display: flex;
             justify-content: space-between;
@@ -95,7 +100,7 @@
         .status-off { background: #1e293b; color: #fff; border: 1px solid #94a3b8; }
         @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
 
-        .charts-row { display: grid; grid-template-columns: 1fr 1fr 1fr 0.9fr; gap: 8px; margin-top: 8px; }
+        .charts-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
         .chart-card, .protection-card, .bearing-condition-card, .panel, .history-section {
             background: linear-gradient(180deg, #102433, #0c1d29);
             border: 1px solid var(--border);
@@ -105,7 +110,7 @@
         .chart-card h3, .protection-card h3, .panel h3, .history-header h3, .bearing-condition-title {
             font-size: 10px; color: var(--muted); margin: 0 0 4px; letter-spacing: 0.4px; font-weight: 700;
         }
-        .chart-container { position: relative; height: 125px; width: 100%; }
+        .chart-container { position: relative; height: 110px; width: 100%; }
         .protection-item {
             display: flex; justify-content: space-between; align-items: center;
             font-size: 11px; margin: 4px 0; padding: 4px 0; border-bottom: 1px solid #163042;
@@ -114,12 +119,9 @@
         .protection-label { color: #cfe7f1; }
         .protect-ok { color: var(--green); font-weight: 700; }
 
-        /* --------------------------------------------------- */
-        /* MODIFIKASI LAYOUT TENGAH (3 KOLOM SEPERTI REFERENSI) */
-        /* --------------------------------------------------- */
         .mid-layout { 
             display: grid; 
-            grid-template-columns: 2.2fr 1.3fr 1fr; /* Pembagian 3 kolom proporsional */
+            grid-template-columns: minmax(0, 3.5fr) minmax(260px, 1fr) minmax(270px, 1.05fr); 
             gap: 8px; 
             margin-top: 8px; 
         }
@@ -140,29 +142,59 @@
             font-size: 10px; color: var(--muted); margin: 0 0 8px; letter-spacing: 0.4px; font-weight: 700;
         }
         .cam-wrapper {
-            position: relative; flex: 1; min-height: 380px; 
-            background: #000; border: 1px solid #163042; border-radius: 6px; overflow: hidden;
+            position: relative; flex: 1; min-height: 240px; 
+            background: #12161b; border: 1px solid #163042; border-radius: 6px; overflow: hidden;
         }
-        .live-badge {
-            position: absolute; top: 12px; left: 12px; background: #dc2626; color: #fff; 
-            font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 4px; 
-            display: flex; align-items: center; gap: 5px; z-index: 10;
-        }
-        .live-badge::before { content: ""; width: 6px; height: 6px; background: #fff; border-radius: 50%; animation: blink 1s infinite; }
+        .cam-wrapper img { position: absolute; inset: 0; }
         .cam-time {
             position: absolute; bottom: 12px; left: 12px; background: rgba(0,0,0,0.7); 
             color: #fff; font-size: 10px; padding: 4px 8px; border-radius: 4px; z-index: 10; font-weight: 600;
         }
+        .cam-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .cam-header h3 { margin: 0; }
+        .cam-live-indicator { color: var(--green); font-size: 11px; font-weight: 800; display: flex; align-items: center; gap: 5px; }
+        .cam-live-indicator::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: blink 1s infinite; }
         
         .panel-flex-grow { display: flex; flex-direction: column; flex: 1; }
+
+        .mid-main-panel {
+            background: linear-gradient(180deg, #102433, #0c1d29);
+            border: 1px solid var(--cyan); border-radius: 8px; padding: 8px 10px;
+            display: flex; flex-direction: column; gap: 8px; min-width: 0;
+            box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.12);
+        }
+        .mid-main-title { font-size: 10px; font-weight: 700; color: var(--cyan); letter-spacing: 0.3px; line-height: 1.3; }
+        .mid-main-pill {
+            padding: 2px 10px; border-radius: 6px; font-size: 10px; font-weight: 800;
+            color: var(--green); border: 1px solid var(--green); background: rgba(34,197,94,0.12);
+        }
+        .mid-main-pill.warning { color: var(--amber); border-color: var(--amber); background: rgba(245,158,11,0.12); }
+        .mid-main-pill.trip { color: var(--red); border-color: var(--red); background: rgba(239,68,68,0.12); }
+        .mid-main-pill.off { color: #fff; border-color: #94a3b8; background: #1e293b; }
+        .log-block { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+        .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .log-header h3 { font-size: 10px; color: var(--muted); margin: 0; letter-spacing: 0.4px; font-weight: 700; }
+        .protection-block { border-top: 1px solid #163042; padding-top: 6px; }
+        .protection-grid {
+            display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, auto);
+            grid-auto-flow: column; column-gap: 12px;
+        }
+        .protection-grid .protection-item { margin: 0; padding: 3px 0; border-bottom: none; font-size: 10.5px; }
+        .protection-failure {
+            display: flex; justify-content: space-between; align-items: center;
+            border-top: 1px dashed #234a60; margin-top: 4px; padding-top: 6px; font-size: 11px;
+        }
+        .title-icon {
+            display: inline-flex; width: 16px; height: 16px; align-items: center; justify-content: center;
+            margin-right: 5px; border-radius: 4px; background: rgba(59,130,246,0.18);
+            font-size: 10px; vertical-align: middle; letter-spacing: 0;
+        }
         .log-box {
-            flex: 1; min-height: 250px; background: #07131c; border: 1px solid #163042; 
+            flex: 1; min-height: 90px; background: #07131c; border: 1px solid #163042; 
             border-radius: 6px; padding: 8px; font-family: ui-monospace, monospace; 
             font-size: 10px; overflow-y: auto; color: var(--green); margin-top: 4px;
         }
-        /* --------------------------------------------------- */
 
-        .bearing-condition-title { color: var(--green) !important; }
         .bearing-condition-body { display: flex; align-items: center; gap: 10px; }
         .bearing-badge {
             width: 70px; height: 70px; min-width: 70px; border-radius: 50%;
@@ -185,15 +217,15 @@
         .bearing-metric-value.bad, .bad { color: var(--red) !important; }
         .bearing-metric-value.off, .off { color: #fff !important; }
 
-        .control-stack { display: flex; flex-direction: column; gap: 8px; }
+        .control-stack { display: flex; flex-direction: column; gap: 6px; }
         .btn {
-            width: 100%; padding: 10px 8px; font-size: 11px; font-weight: 800;
+            width: 100%; padding: 8px; font-size: 11px; font-weight: 800;
             border-radius: 6px; border: none; cursor: pointer; color: white;
         }
         .btn-start { background: #16a34a; }
         .btn-reset { background: #1d4ed8; }
         .btn-stop { background: #dc2626; }
-        .setting-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 11px; color: var(--muted); }
+        .setting-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-size: 11px; color: var(--muted); }
         .setting-input {
             background: #07131c; border: 1px solid var(--border); color: var(--text);
             padding: 4px 6px; border-radius: 4px; width: 55px; text-align: center; font-size: 11px; font-weight: 600;
@@ -203,32 +235,43 @@
             padding: 8px; border-radius: 6px; font-weight: 800; cursor: pointer; margin-top: 6px; font-size: 11px;
         }
         
-        .history-section { margin-top: 8px; }
-        .history-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+        .history-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; min-height: 30px; }
+        .history-panel {
+            background: linear-gradient(180deg, #102433, #0c1d29);
+            border: 1px solid var(--border); border-radius: 8px; padding: 8px; min-width: 0;
+        }
+        .history-chart-box { position: relative; height: 140px; width: 100%; }
         .filter-controls { display: flex; align-items: center; gap: 6px; }
         .time-range-dropdown {
             background: #07131c; border: 1px solid var(--border); color: var(--text);
             padding: 4px 6px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700;
         }
-        .history-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .history-table-container { max-height: 130px; overflow-y: auto; border: 1px solid #163042; border-radius: 6px; }
+        .history-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 8px; margin-top: 8px; }
+        .history-table-container { height: 140px; overflow-y: auto; border: 1px solid #163042; border-radius: 6px; }
         table.history-table { width: 100%; border-collapse: collapse; font-size: 10px; }
         table.history-table th { background: #0a1823; color: var(--muted); padding: 4px 6px; position: sticky; top: 0; text-align: left; }
         table.history-table td { padding: 4px 6px; border-bottom: 1px solid #163042; color: #dbeafe; }
 
         .app-footer {
             margin-top: 8px; padding: 6px 8px; border: 1px solid var(--border);
-            border-radius: 8px; display: flex; justify-content: space-between; gap: 8px;
-            color: var(--muted); font-size: 10px; background: #0c1d29;
+            border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px;
+            color: var(--muted); font-size: 11px; background: #0c1d29;
+        }
+        .app-footer strong { margin-left: 4px; }
+
+        @media (max-width: 1100px) {
+            .grid-container { grid-template-columns: repeat(4, 1fr); }
+            .charts-row, .mid-layout, .history-grid { grid-template-columns: 1fr; }
+            .cam-wrapper { min-height: 220px; }
+            .app-footer { flex-wrap: wrap; }
         }
 
         #toast-notification {
-            visibility: hidden; min-width: 280px; background-color: #F1C40F; color: #1A222D;
-            text-align: center; border-radius: 6px; padding: 12px; position: fixed; z-index: 2000;
-            right: 20px; top: 20px; font-weight: bold; font-size: 13px; opacity: 0;
-            transition: visibility 0.5s, opacity 0.5s;
+            display: none; margin-left: auto; margin-right: 14px;
+            background-color: #fbbf24; color: #1A222D; text-align: center;
+            border-radius: 6px; padding: 8px 16px; font-weight: 600; font-size: 12px;
         }
-        #toast-notification.show { visibility: visible; opacity: 1; }
+        #toast-notification.show { display: block; }
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 1000; justify-content: center; align-items: center; }
         .modal-card, .trip-modal-card, .confirm-modal-card { background: #0d1c28; border: 1px solid var(--border); border-radius: 10px; padding: 20px; width: 500px; }
         .trip-modal-card { width: 420px; border: 2px solid var(--red); text-align: center; }
@@ -247,8 +290,6 @@
     </style>
 </head>
 <body>
-    <div id="toast-notification">⚠️ PERINGATAN: Parameter mendekati batas limit aman!</div>
-
     <div class="modal-overlay" id="tripModal">
         <div class="trip-modal-card">
             <h2>🚨 MOTOR TRIP / DIPAKSA MATI!</h2>
@@ -290,6 +331,7 @@
         </div>
     </div>
     
+    <div class="app-frame">
     <div class="app-header">
         <div class="brand">
             <div class="brand-icon">▣</div>
@@ -298,6 +340,7 @@
                 <p>Motor 1 - Generator (Induction Motor)</p>
             </div>
         </div>
+        <div id="toast-notification">⚠️ PERINGATAN: Parameter mendekati batas limit aman!</div>
         <div class="header-right">
             <div id="live-datetime">Loading Date...</div>
             <div class="sys-online"><span id="system-state-label">ONLINE (FIREBASE)</span></div>
@@ -357,63 +400,70 @@
 
     <div class="charts-row">
         <div class="chart-card">
-            <h3>DE / NDE BEARING TEMPERATURE TREND</h3>
+            <h3><span class="title-icon">🌡</span>DE / NDE BEARING TEMPERATURE TREND</h3>
             <div class="chart-container"><canvas id="tempChart"></canvas></div>
         </div>
         <div class="chart-card">
-            <h3>RPM TREND</h3>
+            <h3><span class="title-icon">⟳</span>RPM TREND</h3>
             <div class="chart-container"><canvas id="rpmChart"></canvas></div>
         </div>
         <div class="chart-card">
-            <h3>VIBRATION TREND</h3>
+            <h3><span class="title-icon">〰</span>VIBRATION TREND</h3>
             <div class="chart-container"><canvas id="vibChart"></canvas></div>
-        </div>
-        <div class="protection-card">
-            <h3>PROTECTION STATUS</h3>
-            <div class="protection-item"><span class="protection-label">DE Temp. Protection</span><span id="prot-temp-de" class="protect-status protect-ok">ENABLED</span></div>
-            <div class="protection-item"><span class="protection-label">NDE Temp. Protection</span><span id="prot-temp-nde" class="protect-status protect-ok">ENABLED</span></div>
-            <div class="protection-item"><span class="protection-label">Vib. Protection</span><span id="prot-vib" class="protect-status protect-ok">ENABLED</span></div>
-            <div class="protection-item"><span class="protection-label">Over speed</span><span id="prot-rpm" class="protect-status protect-ok">ENABLED</span></div>
-            <div class="protection-item"><span class="protection-label">Voltage Protection</span><span id="prot-volt" class="protect-status protect-ok">ENABLED</span></div>
-            <div class="protection-item"><span class="protection-label">Current Protection</span><span id="prot-curr" class="protect-status protect-ok">ENABLED</span></div>
-            <div class="protection-item"><span class="protection-label">Failure Status</span><span id="prot-estop" class="protect-status protect-ok">READY</span></div>
         </div>
     </div>
 
-    <!-- STRUKTUR 3 KOLOM BARU -->
+    <!-- STRUKTUR 3 KOLOM TENGAH -->
     <div class="mid-layout">
-        
-        <!-- KOLOM KIRI: KAMERA -->
+
+        <!-- KOLOM KIRI: KAMERA (lebar) -->
         <div class="camera-panel">
-            <h3>LIVE CAMERA MONITORING</h3>
+            <div class="cam-header">
+                <h3><span class="title-icon">📷</span>LIVE CAMERA MONITORING</h3>
+                <div class="cam-live-indicator">LIVE</div>
+            </div>
             <div class="cam-wrapper">
-                <div class="live-badge">LIVE</div>
                 <div class="cam-time" id="cam-time-display">Loading...</div>
-                <img id="camera-stream" src="/video_feed" alt="Membaca Kamera..." style="width: 100%; height: 100%; object-fit: cover;">
+                <img id="camera-stream" src="/video_feed" alt="" style="width: 100%; height: 100%; object-fit: cover; background: transparent;" onerror="this.style.display='none'" onload="this.style.display='block'">
             </div>
         </div>
 
-        <!-- KOLOM TENGAH: BEARING & LOG HISTORY -->
-        <div class="col-stack">
-            <div class="bearing-condition-card">
-                <div class="bearing-condition-title">BEARING CONDITION</div>
-                <div class="bearing-condition-body">
-                    <div class="bearing-badge" id="bearing-badge">
-                        <div class="bearing-badge-label" id="bearing-badge-label">NORMAL</div>
-                        <div class="bearing-badge-icon" id="bearing-badge-icon">✓</div>
-                    </div>
-                    <div class="bearing-metrics">
-                        <div class="bearing-metric-row"><span>DE Temp.</span><span class="bearing-metric-value ok" id="bearing-temp-de">-- °C</span></div>
-                        <div class="bearing-metric-row"><span>NDE Temp.</span><span class="bearing-metric-value ok" id="bearing-temp-nde">-- °C</span></div>
-                        <div class="bearing-metric-row"><span>Vibration</span><span class="bearing-metric-value ok" id="bearing-vib">-- mm/s</span></div>
-                        <div class="bearing-metric-row"><span>RPM</span><span class="bearing-metric-value ok" id="bearing-rpm">-- RPM</span></div>
-                        <div class="bearing-overall"><span>Overall :</span><span id="bearing-overall" class="ok">Condition Good</span></div>
-                    </div>
+        <!-- KOLOM TENGAH (sempit): BEARING CONDITION + PROTECTION STATUS + EVENT LOG -->
+        <div class="mid-main-panel">
+            <div class="mid-main-title"><span class="title-icon">⚙</span>BEARING CONDITION, PROTECTION AND EVENT LOG</div>
+
+            <div class="bearing-condition-body">
+                <div class="bearing-badge" id="bearing-badge">
+                    <div class="bearing-badge-label" id="bearing-badge-label">NORMAL</div>
+                    <div class="bearing-badge-icon" id="bearing-badge-icon">✓</div>
+                </div>
+                <div class="bearing-metrics">
+                    <div class="bearing-metric-row"><span>DE Temp.</span><span class="bearing-metric-value ok" id="bearing-temp-de">-- °C</span></div>
+                    <div class="bearing-metric-row"><span>NDE Temp.</span><span class="bearing-metric-value ok" id="bearing-temp-nde">-- °C</span></div>
+                    <div class="bearing-metric-row"><span>Vibration</span><span class="bearing-metric-value ok" id="bearing-vib">-- mm/s</span></div>
+                    <div class="bearing-metric-row"><span>RPM</span><span class="bearing-metric-value ok" id="bearing-rpm">-- RPM</span></div>
+                    <div class="bearing-overall"><span>Overall :</span><span id="bearing-overall" class="ok">Condition Good</span></div>
                 </div>
             </div>
 
-            <div class="panel panel-flex-grow">
-                <h3>EVENT & ALARM LOG HISTORY</h3>
+            <div class="protection-block">
+                <h3 class="bearing-condition-title">PROTECTION STATUS</h3>
+                <div class="protection-grid">
+                    <div class="protection-item"><span class="protection-label">DE Temp</span><span id="prot-temp-de" class="protect-status protect-ok">ENABLED</span></div>
+                    <div class="protection-item"><span class="protection-label">NDE Temp</span><span id="prot-temp-nde" class="protect-status protect-ok">ENABLED</span></div>
+                    <div class="protection-item"><span class="protection-label">Vibration</span><span id="prot-vib" class="protect-status protect-ok">ENABLED</span></div>
+                    <div class="protection-item"><span class="protection-label">Overspeed</span><span id="prot-rpm" class="protect-status protect-ok">ENABLED</span></div>
+                    <div class="protection-item"><span class="protection-label">Voltage</span><span id="prot-volt" class="protect-status protect-ok">ENABLED</span></div>
+                    <div class="protection-item"><span class="protection-label">Current</span><span id="prot-curr" class="protect-status protect-ok">ENABLED</span></div>
+                </div>
+                <div class="protection-failure"><span class="protection-label">Failure Status</span><span id="prot-estop" class="protect-status protect-ok">READY</span></div>
+            </div>
+
+            <div class="log-block">
+                <div class="log-header">
+                    <h3><span class="title-icon">⚠</span>EVENT & ALARM LOG HISTORY</h3>
+                    <div class="mid-main-pill" id="bearing-pill">NORMAL</div>
+                </div>
                 <div class="log-box" id="log-container">Loading logs...</div>
             </div>
         </div>
@@ -421,7 +471,7 @@
         <!-- KOLOM KANAN: KONTROL & SETTING -->
         <div class="col-stack">
             <div class="panel">
-                <h3>MOTOR CONTROL</h3>
+                <h3><span class="title-icon">⏻</span>MOTOR CONTROL</h3>
                 <div class="control-stack">
                     <button class="btn btn-start" onclick="triggerControl('start')">▶ START MOTOR</button>
                     <button class="btn btn-reset" onclick="openResetConfirmModal()">↻ RESET ALARM</button>
@@ -430,7 +480,7 @@
             </div>
 
             <div class="panel panel-flex-grow">
-                <h3>MOTOR PERFORMANCE SETTINGS</h3>
+                <h3><span class="title-icon">⚙</span>MOTOR PERFORMANCE SETTINGS</h3>
                 <div class="setting-item"><span>Max. DE Temp (°C)</span><input type="number" id="input-limit-temp-de" class="setting-input" value="80"></div>
                 <div class="setting-item"><span>Max. NDE Temp (°C)</span><input type="number" id="input-limit-temp-nde" class="setting-input" value="80"></div>
                 <div class="setting-item"><span>Max. RPM Trip</span><input type="number" id="input-limit-rpm" class="setting-input" value="1500"></div>
@@ -444,31 +494,12 @@
 
     </div>
 
-    <div class="history-section">
-        <div class="history-header">
-            <h3>MOTOR PERFORMANCE HISTORY</h3>
-            <div class="filter-controls">
-                <select id="exportFormat" class="time-range-dropdown" style="background: #16a34a;">
-                    <option value="excel">📥 Export to Excel</option>
-                    <option value="pdf">📄 Export to PDF</option>
-                </select>
-                <button class="btn-save-settings" style="width: auto; padding: 6px 12px; margin-top: 0;" onclick="executeExport()">DOWNLOAD</button>
-                <select id="quickTimeRange" class="time-range-dropdown" onchange="handleQuickRangeChange(this.value)">
-                    <option value="custom">📅 Custom Time Range...</option>
-                    <option value="5m">Past 5m</option>
-                    <option value="15m">Past 15m</option>
-                    <option value="1h">Past 1h</option>
-                    <option value="3h">Past 3h</option>
-                    <option value="6h">Past 6h</option>
-                    <option value="12h">Past 12h</option>
-                    <option value="24h" selected>Past 24h</option>
-                    <option value="2d">Past 2d</option>
-                    <option value="7d">Past 7d</option>
-                    <option value="30d">Past 30d</option>
-                </select>
+    <!-- BARIS BAWAH: RIWAYAT (kiri) | GRAFIK GABUNGAN + EXPORT (kanan) -->
+    <div class="history-grid">
+        <div class="history-panel">
+            <div class="history-header">
+                <h3><span class="title-icon">▤</span>MOTOR PERFORMANCE HISTORY</h3>
             </div>
-        </div>
-        <div class="history-grid">
             <div class="history-table-container">
                 <table class="history-table" id="history-excel-table">
                     <thead>
@@ -485,18 +516,45 @@
                     <tbody id="history-table-body"></tbody>
                 </table>
             </div>
-            <div style="position: relative; height: 180px; width: 100%;">
+        </div>
+
+        <div class="history-panel">
+            <div class="history-header">
+                <h3><span class="title-icon">📊</span>DE / NDE / RPM x10 / VIB</h3>
+                <div class="filter-controls">
+                    <select id="exportFormat" class="time-range-dropdown" style="background: #16a34a;">
+                        <option value="excel">📥 Export to Excel</option>
+                        <option value="pdf">📄 Export to PDF</option>
+                    </select>
+                    <button class="btn-save-settings" style="width: auto; padding: 6px 12px; margin-top: 0;" onclick="executeExport()">DOWNLOAD</button>
+                    <select id="quickTimeRange" class="time-range-dropdown" onchange="handleQuickRangeChange(this.value)">
+                        <option value="custom">📅 Custom Time Range...</option>
+                        <option value="5m">Past 5m</option>
+                        <option value="15m">Past 15m</option>
+                        <option value="1h">Past 1h</option>
+                        <option value="3h">Past 3h</option>
+                        <option value="6h">Past 6h</option>
+                        <option value="12h">Past 12h</option>
+                        <option value="24h" selected>Past 24h</option>
+                        <option value="2d">Past 2d</option>
+                        <option value="7d">Past 7d</option>
+                        <option value="30d">Past 30d</option>
+                    </select>
+                </div>
+            </div>
+            <div class="history-chart-box">
                 <canvas id="hourlyHistoryChart"></canvas>
             </div>
         </div>
     </div>
 
     <div class="app-footer">
-        <div>Motor Name<br><strong style="color:#fff;">Motor 1 - Generator</strong></div>
-        <div>Location<br><strong style="color:#fff;">Production Line 1</strong></div>
-        <div>Last Updated<br><strong style="color:#fff;" id="footer-updated">-</strong></div>
+        <div>Motor Name <strong style="color:#fff;">Motor 1 - Generator</strong></div>
+        <div>Location <strong style="color:#fff;">Production Line 1</strong></div>
+        <div>Last Updated <strong style="color:#fff;" id="footer-updated">-</strong></div>
         <div style="color: var(--green); font-weight: 700;">● System Normal</div>
     </div>
+    </div><!-- /.app-frame -->
 
     <div class="modal-overlay" id="dateModal">
         <div class="modal-card">
@@ -574,7 +632,6 @@
             const text = now.toLocaleDateString('id-ID', options);
             document.getElementById('live-datetime').innerText = text;
             document.getElementById('footer-updated').innerText = text;
-            // Update timestamp di atas kamera
             if(document.getElementById('cam-time-display')) {
                 document.getElementById('cam-time-display').innerText = text;
             }
@@ -1142,6 +1199,23 @@
         }
 
         setInterval(simulateLiveData, 2000);
+    </script>
+    <script>
+        (function () {
+            const badge = document.getElementById('bearing-badge');
+            const label = document.getElementById('bearing-badge-label');
+            const pill = document.getElementById('bearing-pill');
+            if (!badge || !label || !pill) return;
+            const sync = () => {
+                pill.textContent = label.textContent;
+                pill.className = 'mid-main-pill' +
+                    (badge.classList.contains('warning') ? ' warning' :
+                     badge.classList.contains('trip') ? ' trip' :
+                     badge.classList.contains('off') ? ' off' : '');
+            };
+            new MutationObserver(sync).observe(badge, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true, characterData: true });
+            sync();
+        })();
     </script>
 </body>
 </html>
