@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Motor Monitoring System - JY Series</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
@@ -14,6 +15,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
@@ -119,16 +121,16 @@
         .protection-label { color: #cfe7f1; }
         .protect-ok { color: var(--green); font-weight: 700; }
 
-        .mid-layout { 
-            display: grid; 
-            grid-template-columns: minmax(0, 3.5fr) minmax(260px, 1fr) minmax(270px, 1.05fr); 
-            gap: 8px; 
-            margin-top: 8px; 
+        .mid-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 3.5fr) minmax(260px, 1fr) minmax(270px, 1.05fr);
+            gap: 8px;
+            margin-top: 8px;
         }
-        .col-stack { 
-            display: flex; 
-            flex-direction: column; 
-            gap: 8px; 
+        .col-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
         .camera-panel {
             background: linear-gradient(180deg, #102433, #0c1d29);
@@ -142,19 +144,19 @@
             font-size: 10px; color: var(--muted); margin: 0 0 8px; letter-spacing: 0.4px; font-weight: 700;
         }
         .cam-wrapper {
-            position: relative; flex: 1; min-height: 240px; 
+            position: relative; flex: 1; min-height: 240px;
             background: #12161b; border: 1px solid #163042; border-radius: 6px; overflow: hidden;
         }
         .cam-wrapper img { position: absolute; inset: 0; }
         .cam-time {
-            position: absolute; bottom: 12px; left: 12px; background: rgba(0,0,0,0.7); 
+            position: absolute; bottom: 12px; left: 12px; background: rgba(0,0,0,0.7);
             color: #fff; font-size: 10px; padding: 4px 8px; border-radius: 4px; z-index: 10; font-weight: 600;
         }
         .cam-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .cam-header h3 { margin: 0; }
         .cam-live-indicator { color: var(--green); font-size: 11px; font-weight: 800; display: flex; align-items: center; gap: 5px; }
         .cam-live-indicator::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: blink 1s infinite; }
-        
+
         .panel-flex-grow { display: flex; flex-direction: column; flex: 1; }
 
         .mid-main-panel {
@@ -171,7 +173,7 @@
         .mid-main-pill.warning { color: var(--amber); border-color: var(--amber); background: rgba(245,158,11,0.12); }
         .mid-main-pill.trip { color: var(--red); border-color: var(--red); background: rgba(239,68,68,0.12); }
         .mid-main-pill.off { color: #fff; border-color: #94a3b8; background: #1e293b; }
-        .log-block { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+        .log-block { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
         .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
         .log-header h3 { font-size: 10px; color: var(--muted); margin: 0; letter-spacing: 0.4px; font-weight: 700; }
         .protection-block { border-top: 1px solid #163042; padding-top: 6px; }
@@ -190,8 +192,8 @@
             font-size: 10px; vertical-align: middle; letter-spacing: 0;
         }
         .log-box {
-            flex: 1; min-height: 90px; background: #07131c; border: 1px solid #163042; 
-            border-radius: 6px; padding: 8px; font-family: ui-monospace, monospace; 
+            flex: 1 1 auto; min-height: 90px; max-height: 50vh; background: #07131c; border: 1px solid #163042;
+            border-radius: 6px; padding: 8px; font-family: ui-monospace, monospace;
             font-size: 10px; overflow-y: auto; color: var(--green); margin-top: 4px;
         }
 
@@ -234,7 +236,7 @@
             width: 100%; background: #2563eb; border: none; color: white;
             padding: 8px; border-radius: 6px; font-weight: 800; cursor: pointer; margin-top: 6px; font-size: 11px;
         }
-        
+
         .history-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; min-height: 30px; }
         .history-panel {
             background: linear-gradient(180deg, #102433, #0c1d29);
@@ -248,6 +250,7 @@
         }
         .history-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 8px; margin-top: 8px; }
         .history-table-container { height: 140px; overflow-y: auto; border: 1px solid #163042; border-radius: 6px; }
+        .history-live-box { height: 100%; overflow-y: auto; }
         table.history-table { width: 100%; border-collapse: collapse; font-size: 10px; }
         table.history-table th { background: #0a1823; color: var(--muted); padding: 4px 6px; position: sticky; top: 0; text-align: left; }
         table.history-table td { padding: 4px 6px; border-bottom: 1px solid #163042; color: #dbeafe; }
@@ -287,6 +290,7 @@
         .btn-modal-no { background: #dc2626; }
         .trip-modal-card h2 { color: var(--red); }
         .confirm-modal-card h2 { color: #60a5fa; }
+        #trip-modal-desc { white-space: pre-line; }
     </style>
 </head>
 <body>
@@ -330,7 +334,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="app-frame">
     <div class="app-header">
         <div class="brand">
@@ -345,6 +349,7 @@
             <div id="live-datetime">Loading Date...</div>
             <div class="sys-online"><span id="system-state-label">ONLINE (FIREBASE)</span></div>
             MODE: <button class="btn-mode" id="mode-btn" onclick="triggerControl('toggle_mode')">AUTO</button>
+            <a href="/dataset" style="color: var(--cyan); text-decoration: none; font-size: 12px; font-weight: 600; margin-left: 12px; padding: 6px 10px; border: 1px solid var(--cyan); border-radius: 6px;">📷 Dataset</a>
         </div>
     </div>
 
@@ -416,7 +421,7 @@
     <!-- STRUKTUR 3 KOLOM TENGAH -->
     <div class="mid-layout">
 
-        <!-- KOLOM KIRI: KAMERA (lebar) -->
+        <!-- KOLOM KIRI: KAMERA -->
         <div class="camera-panel">
             <div class="cam-header">
                 <h3><span class="title-icon">📷</span>LIVE CAMERA MONITORING</h3>
@@ -428,7 +433,7 @@
             </div>
         </div>
 
-        <!-- KOLOM TENGAH (sempit): BEARING CONDITION + PROTECTION STATUS + EVENT LOG -->
+        <!-- KOLOM TENGAH: BEARING CONDITION + PROTECTION STATUS + EVENT LOG -->
         <div class="mid-main-panel">
             <div class="mid-main-title"><span class="title-icon">⚙</span>BEARING CONDITION, PROTECTION AND EVENT LOG</div>
 
@@ -515,6 +520,22 @@
                     </thead>
                     <tbody id="history-table-body"></tbody>
                 </table>
+                <div class="history-live-box">
+                    <table class="history-table" id="history-live-table">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Time</th>
+                                <th>Event</th>
+                                <th>DE Temp</th>
+                                <th>NDE Temp</th>
+                                <th>RPM</th>
+                                <th>Vib (mm/s)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-live-body"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -540,6 +561,7 @@
                         <option value="7d">Past 7d</option>
                         <option value="30d">Past 30d</option>
                     </select>
+                    <div id="history-status" style="font-size: 10px; color: var(--muted); margin-bottom: 6px;"></div>
                 </div>
             </div>
             <div class="history-chart-box">
@@ -590,6 +612,19 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        // Socket.io: data real-time dari server
+        const socket = io();
+        socket.on('connect', () => {
+            console.log('Socket.io connected - Live data stream active');
+            document.getElementById('system-state-label').innerText = 'ONLINE (SOCKET.IO)';
+            document.getElementById('system-state-label').style.color = '#22c55e';
+        });
+        socket.on('disconnect', () => {
+            console.log('Socket.io disconnected');
+            document.getElementById('system-state-label').innerText = 'OFFLINE';
+            document.getElementById('system-state-label').style.color = '#E74C3C';
+        });
+
         let thresholdTempDe = 80.0;
         let thresholdTempNde = 80.0;
         let thresholdRpm = 1500;
@@ -598,11 +633,6 @@
         let thresholdVoltMax = 240;
         let thresholdCurr = 8.0;
 
-        let isDeTempTripAcknowledged = false;
-        let isNdeTempTripAcknowledged = false;
-        let isVibTripAcknowledged = false;
-        let isVoltTripAcknowledged = false;
-        let isCurrTripAcknowledged = false;
         let isRunning = true;
         let alarmRequiresReset = false;
         let runtimeSeconds = 0;
@@ -613,10 +643,11 @@
             const past = new Date();
             past.setHours(now.getHours() - 24);
 
-            startPicker = flatpickr("#modalStartDate", { enableTime: true, dateFormat: "Y-m-d H:i:S", defaultDate: past, theme: "dark" });
-            endPicker = flatpickr("#modalEndDate", { enableTime: true, dateFormat: "Y-m-d H:i:S", defaultDate: now, theme: "dark" });
+            startPicker = flatpickr("#modalStartDate", { enableTime: true, dateFormat: "Y-m-d H:i:S", defaultDate: past });
+            endPicker = flatpickr("#modalEndDate", { enableTime: true, dateFormat: "Y-m-d H:i:S", defaultDate: now });
 
             handleQuickRangeChange('24h');
+            loadThresholds();
             updateLiveDateTime();
             setInterval(updateLiveDateTime, 1000);
             fetchRunningTime();
@@ -632,7 +663,7 @@
             const text = now.toLocaleDateString('id-ID', options);
             document.getElementById('live-datetime').innerText = text;
             document.getElementById('footer-updated').innerText = text;
-            if(document.getElementById('cam-time-display')) {
+            if (document.getElementById('cam-time-display')) {
                 document.getElementById('cam-time-display').innerText = text;
             }
         }
@@ -692,8 +723,38 @@
                     hourlyChart.data.datasets[2].data = data.rpm.map(val => val / 10);
                     hourlyChart.data.datasets[3].data = data.vib;
                     hourlyChart.update();
+
+                    const tableBody = document.getElementById('history-table-body');
+                    const statusEl = document.getElementById('history-status');
+                    tableBody.textContent = '';
+                    if (data.labels.length === 0) {
+                        const tr = document.createElement('tr');
+                        const td = document.createElement('td');
+                        td.colSpan = 7;
+                        td.style.cssText = 'text-align:center; color: var(--muted); padding: 12px;';
+                        td.textContent = data.message || 'Belum ada data';
+                        tr.appendChild(td);
+                        tableBody.appendChild(tr);
+                        statusEl.textContent = data.message || 'Belum ada data';
+                        return;
+                    }
+                    data.table.forEach(row => {
+                        const tr = document.createElement('tr');
+                        const cells = [row.Date, row.Time, `${row.temp_de} °C`, `${row.temp_nde} °C`, row.rpm, `${row.vib} mm/s`, row.status || 'NORMAL'];
+                        cells.forEach((text, i) => {
+                            const td = document.createElement('td');
+                            td.textContent = text ?? '';
+                            if (i === 6) { td.style.color = '#22c55e'; td.style.fontWeight = 'bold'; }
+                            tr.appendChild(td);
+                        });
+                        tableBody.appendChild(tr);
+                    });
+                    statusEl.textContent = data.message || (data.demo === true ? 'Data demo (placeholder)' : 'Data dari server');
                 })
-                .catch(error => console.error('Error fetching history:', error));
+                .catch(error => {
+                    console.error('Error fetching history:', error);
+                    document.getElementById('history-status').textContent = 'Gagal memuat data';
+                });
         }
 
         function executeExport() {
@@ -810,35 +871,34 @@
             }
             document.getElementById('confirmModal').style.display = 'none';
             if (isYes) {
-                thresholdTempDe = parseFloat(document.getElementById('input-limit-temp-de').value) || 80.0;
-                thresholdTempNde = parseFloat(document.getElementById('input-limit-temp-nde').value) || 80.0;
-                thresholdRpm = parseFloat(document.getElementById('input-limit-rpm').value) || 1500;
-                thresholdVib = parseFloat(document.getElementById('input-limit-vib').value) || 5.0;
-                thresholdVoltMin = parseFloat(document.getElementById('input-limit-volt-min').value) || 220;
-                thresholdVoltMax = parseFloat(document.getElementById('input-limit-volt-max').value) || 240;
-                thresholdCurr = parseFloat(document.getElementById('input-limit-curr').value) || 8.0;
-                document.getElementById('label-limit-temp-de').innerText = `Target ≤ ${thresholdTempDe} °C`;
-                document.getElementById('label-limit-temp-nde').innerText = `Target ≤ ${thresholdTempNde} °C`;
-                document.getElementById('label-limit-rpm').innerText = `Target ≤ ${thresholdRpm}`;
-                document.getElementById('label-limit-vib').innerText = `Target ≤ ${thresholdVib} mm/s`;
-                document.getElementById('label-limit-volt').innerText = `Target ${thresholdVoltMin} – ${thresholdVoltMax} V`;
-                document.getElementById('label-limit-curr').innerText = `Target ≤ ${thresholdCurr} A`;
-                tempChart.options.plugins.annotation.annotations.lineThresholdDe.yMin = thresholdTempDe;
-                tempChart.options.plugins.annotation.annotations.lineThresholdDe.yMax = thresholdTempDe;
-                tempChart.options.plugins.annotation.annotations.lineThresholdDe.label.content = 'DE: ' + thresholdTempDe;
-                tempChart.options.plugins.annotation.annotations.lineThresholdNde.yMin = thresholdTempNde;
-                tempChart.options.plugins.annotation.annotations.lineThresholdNde.yMax = thresholdTempNde;
-                tempChart.options.plugins.annotation.annotations.lineThresholdNde.label.content = 'NDE: ' + thresholdTempNde;
-                tempChart.update();
-                rpmChart.options.plugins.annotation.annotations.lineThreshold.yMin = thresholdRpm;
-                rpmChart.options.plugins.annotation.annotations.lineThreshold.yMax = thresholdRpm;
-                rpmChart.options.plugins.annotation.annotations.lineThreshold.label.content = 'Limit: ' + thresholdRpm;
-                rpmChart.update();
-                vibChart.options.plugins.annotation.annotations.lineThreshold.yMin = thresholdVib;
-                vibChart.options.plugins.annotation.annotations.lineThreshold.yMax = thresholdVib;
-                vibChart.options.plugins.annotation.annotations.lineThreshold.label.content = 'Limit: ' + thresholdVib;
-                vibChart.update();
-                alert("Threshold dan garis batas grafik berhasil diperbarui!");
+                const payload = {
+                    temp_de: parseFloat(document.getElementById('input-limit-temp-de').value) || 80.0,
+                    temp_nde: parseFloat(document.getElementById('input-limit-temp-nde').value) || 80.0,
+                    rpm: parseFloat(document.getElementById('input-limit-rpm').value) || 1500,
+                    vib: parseFloat(document.getElementById('input-limit-vib').value) || 5.0,
+                    volt_min: parseFloat(document.getElementById('input-limit-volt-min').value) || 220,
+                    volt_max: parseFloat(document.getElementById('input-limit-volt-max').value) || 240,
+                    curr: parseFloat(document.getElementById('input-limit-curr').value) || 8.0
+                };
+                // Simpan ke server; tampilan baru diperbarui setelah server menerima
+                fetch('/save_thresholds', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify(payload)
+                }).then(async r => {
+                    let d = {};
+                    try { d = await r.json(); } catch (e) {}
+                    if (r.ok && d.ok) {
+                        applyThresholds(payload);
+                        alert("Threshold dan garis batas grafik berhasil diperbarui dan disimpan!");
+                    } else {
+                        alert("Gagal simpan threshold: " + (d.error || r.status));
+                        loadThresholds();
+                    }
+                }).catch(e => { alert("Error: " + e.message); loadThresholds(); });
             } else {
                 document.getElementById('input-limit-temp-de').value = thresholdTempDe;
                 document.getElementById('input-limit-temp-nde').value = thresholdTempNde;
@@ -878,16 +938,43 @@
 
         function acknowledgeTrip() {
             document.getElementById('tripModal').style.display = 'none';
-            const currentTempDe = parseFloat(document.getElementById('val-temp-de').innerText);
-            const currentTempNde = parseFloat(document.getElementById('val-temp-nde').innerText);
-            const currentVib = parseFloat(document.getElementById('val-vib').innerText);
-            if (currentTempDe <= thresholdTempDe) isDeTempTripAcknowledged = true;
-            if (currentTempNde <= thresholdTempNde) isNdeTempTripAcknowledged = true;
-            if (currentVib <= thresholdVib) isVibTripAcknowledged = true;
-            const currentVolt = parseFloat(document.getElementById('val-volt').innerText);
-            const currentCurr = parseFloat(document.getElementById('val-curr').innerText);
-            if (currentVolt >= thresholdVoltMin && currentVolt <= thresholdVoltMax) isVoltTripAcknowledged = true;
-            if (currentCurr <= thresholdCurr) isCurrTripAcknowledged = true;
+        }
+
+        // Muat & terapkan threshold dari server
+        function applyThresholds(t) {
+            thresholdTempDe = t.temp_de; thresholdTempNde = t.temp_nde;
+            thresholdRpm = t.rpm; thresholdVib = t.vib;
+            thresholdVoltMin = t.volt_min; thresholdVoltMax = t.volt_max;
+            thresholdCurr = t.curr;
+            document.getElementById('input-limit-temp-de').value = thresholdTempDe;
+            document.getElementById('input-limit-temp-nde').value = thresholdTempNde;
+            document.getElementById('input-limit-rpm').value = thresholdRpm;
+            document.getElementById('input-limit-vib').value = thresholdVib;
+            document.getElementById('input-limit-volt-min').value = thresholdVoltMin;
+            document.getElementById('input-limit-volt-max').value = thresholdVoltMax;
+            document.getElementById('input-limit-curr').value = thresholdCurr;
+            document.getElementById('label-limit-temp-de').innerText = `Target ≤ ${thresholdTempDe} °C`;
+            document.getElementById('label-limit-temp-nde').innerText = `Target ≤ ${thresholdTempNde} °C`;
+            document.getElementById('label-limit-rpm').innerText = `Target ≤ ${thresholdRpm}`;
+            document.getElementById('label-limit-vib').innerText = `Target ≤ ${thresholdVib} mm/s`;
+            document.getElementById('label-limit-volt').innerText = `Target ${thresholdVoltMin} – ${thresholdVoltMax} V`;
+            document.getElementById('label-limit-curr').innerText = `Target ≤ ${thresholdCurr} A`;
+            const setLine = (chart, key, val, text) => {
+                const a = chart.options.plugins.annotation.annotations[key];
+                a.yMin = val; a.yMax = val; a.label.content = text;
+                chart.update('none');
+            };
+            setLine(tempChart, 'lineThresholdDe', thresholdTempDe, 'DE: ' + thresholdTempDe);
+            setLine(tempChart, 'lineThresholdNde', thresholdTempNde, 'NDE: ' + thresholdTempNde);
+            setLine(rpmChart, 'lineThreshold', thresholdRpm, 'Limit: ' + thresholdRpm);
+            setLine(vibChart, 'lineThreshold', thresholdVib, 'Limit: ' + thresholdVib);
+        }
+
+        function loadThresholds() {
+            fetch('/get_thresholds')
+                .then(r => r.json())
+                .then(applyThresholds)
+                .catch(e => console.error('Gagal memuat threshold:', e));
         }
 
         function metricState(value, threshold, warnRatio) {
@@ -951,7 +1038,7 @@
                         lineThreshold: {
                             type: 'line', yMin: thresholdValue, yMax: thresholdValue,
                             borderColor: '#E74C3C', borderWidth: 2, borderDash: [4, 4],
-                            label: { content: 'Limit: ' + thresholdValue, enabled: true, position: 'end', backgroundColor: 'rgba(231, 76, 60, 0.8)', font: { size: 9 } }
+                            label: { content: 'Limit: ' + thresholdValue, display: true, position: 'end', backgroundColor: 'rgba(231, 76, 60, 0.8)', font: { size: 9 } }
                         }
                     }
                 }
@@ -968,12 +1055,12 @@
             lineThresholdDe: {
                 type: 'line', yMin: thresholdTempDe, yMax: thresholdTempDe,
                 borderColor: '#E67E22', borderWidth: 2, borderDash: [4, 4],
-                label: { content: 'DE: ' + thresholdTempDe, enabled: true, position: 'start', backgroundColor: 'rgba(230, 126, 34, 0.8)', font: { size: 9 } }
+                label: { content: 'DE: ' + thresholdTempDe, display: true, position: 'start', backgroundColor: 'rgba(230, 126, 34, 0.8)', font: { size: 9 } }
             },
             lineThresholdNde: {
                 type: 'line', yMin: thresholdTempNde, yMax: thresholdTempNde,
                 borderColor: '#22d3ee', borderWidth: 2, borderDash: [4, 4],
-                label: { content: 'NDE: ' + thresholdTempNde, enabled: true, position: 'end', backgroundColor: 'rgba(34, 211, 238, 0.8)', font: { size: 9 } }
+                label: { content: 'NDE: ' + thresholdTempNde, display: true, position: 'end', backgroundColor: 'rgba(34, 211, 238, 0.8)', font: { size: 9 } }
             }
         };
         const tempChart = new Chart(document.getElementById('tempChart').getContext('2d'), {
@@ -1000,12 +1087,12 @@
         const hourlyChart = new Chart(document.getElementById('hourlyHistoryChart').getContext('2d'), {
             type: 'line',
             data: {
-                labels: ['Start', 'Q1', 'Mid', 'Q2', 'End'],
+                labels: [],
                 datasets: [
-                    { label: 'DE Temp (°C)', data: [45, 52, 58, 65, 60], borderColor: '#E67E22', tension: 0.3, yAxisID: 'y' },
-                    { label: 'NDE Temp (°C)', data: [43, 50, 56, 62, 58], borderColor: '#22d3ee', tension: 0.3, yAxisID: 'y' },
-                    { label: 'RPM (x10)', data: [138, 140, 142, 139, 140], borderColor: '#2ECC71', tension: 0.3, yAxisID: 'y1' },
-                    { label: 'Vib (mm/s)', data: [2.1, 2.5, 3.2, 4.0, 3.5], borderColor: '#3498DB', tension: 0.3, yAxisID: 'y2' }
+                    { label: 'DE Temp (°C)', data: [], borderColor: '#E67E22', tension: 0.3, yAxisID: 'y' },
+                    { label: 'NDE Temp (°C)', data: [], borderColor: '#22d3ee', tension: 0.3, yAxisID: 'y' },
+                    { label: 'RPM (x10)', data: [], borderColor: '#2ECC71', tension: 0.3, yAxisID: 'y1' },
+                    { label: 'Vib (mm/s)', data: [], borderColor: '#3498DB', tension: 0.3, yAxisID: 'y2' }
                 ]
             },
             options: {
@@ -1026,179 +1113,199 @@
             `<span style="color: #2ECC71;">[00:00:02] Motor JY Series started successfully.</span>`
         ];
 
-        function addLiveHistoryRow(timestamp, tempDe, tempNde, rpm, vib, status) {
-            const tableBody = document.getElementById('history-table-body');
-            const statusColor = (status === 'NORMAL') ? '#22c55e' : '#ef4444';
-            const parts = timestamp.split(" ");
-            const newRow = document.createElement('tr');
-            newRow.innerHTML = `<td>${parts[0] || ""}</td><td>${parts[1] || ""}</td><td>${tempDe} °C</td><td>${tempNde} °C</td><td>${rpm}</td><td>${vib}</td><td style="color: ${statusColor}; font-weight: bold;">${status}</td>`;
-            tableBody.appendChild(newRow);
-            if (tableBody.rows.length > 15) tableBody.deleteRow(0);
-            document.querySelector('.history-table-container').scrollTop = document.querySelector('.history-table-container').scrollHeight;
+        // ===== Penanganan data real-time (proteksi/trip diputuskan oleh SERVER) =====
+        let lastFirebaseWrite = 0;
+        let lastTripLock = false;
+        let lastToastTime = 0;
+
+        socket.on('motor_data', processLiveMotorData);
+
+        function addLog(color, text) {
+            logMessages.push(`<span style="color: ${color};">[${new Date().toLocaleTimeString()}] ${text}</span>`);
+            if (logMessages.length > 30) logMessages.shift();
+            const box = document.getElementById('log-container');
+            box.innerHTML = logMessages.join('<br>');
+            box.scrollTop = box.scrollHeight;
         }
 
-        function simulateLiveData() {
-            const cardTempDe = document.getElementById('card-temp-de');
-            const cardTempNde = document.getElementById('card-temp-nde');
-            const cardRpm = document.getElementById('card-rpm');
-            const cardVib = document.getElementById('card-vib');
-            const cardVolt = document.getElementById('card-volt');
-            const cardCurr = document.getElementById('card-curr');
-            const cardRuntime = document.getElementById('card-runtime');
-            const statusBadge = document.getElementById('gen-status');
-            const systemStateLabel = document.getElementById('system-state-label');
-            cardTempDe.className = "card"; cardTempNde.className = "card"; cardRpm.className = "card"; cardVib.className = "card";
-            cardVolt.className = "card"; cardCurr.className = "card"; cardRuntime.className = "card";
-            const currentTimeStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
+        function toastThrottled(msg) {
+            if (Date.now() - lastToastTime > 4000) { lastToastTime = Date.now(); showToast(msg); }
+        }
 
+        // Throttle 5 detik (state di luar fungsi) + simpan riwayat
+        function writeFirebase(payload) {
+            if (Date.now() - lastFirebaseWrite < 5000) return;
+            lastFirebaseWrite = Date.now();
+            db.ref('motor_status').set(payload).catch(e => console.error('Firebase:', e));
+            db.ref('motor_history').push(payload).catch(e => console.error('Firebase:', e));
+        }
+
+        function classify(v, limit, ratio) {
+            if (v > limit) return 'trip';
+            if (v >= limit * ratio) return 'warning';
+            return 'normal';
+        }
+
+        function processLiveMotorData(data) {
+            const el = id => document.getElementById(id);
+            const setCard = (id, cls) => { el(id).className = 'card ' + cls; };
+            const allCards = ['card-temp-de', 'card-temp-nde', 'card-rpm', 'card-vib', 'card-volt', 'card-curr', 'card-runtime'];
+            const statusBadge = el('gen-status');
+            const stateLabel = el('system-state-label');
+            const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
+
+            isRunning = (data.state === 'RUNNING');
+            systemMode = data.mode || 'AUTO';
+            alarmRequiresReset = !!data.trip_lock;
+            el('mode-btn').innerText = systemMode;
+
+            // Trip baru saja terjadi di server -> tampilkan modal sekali
+            if (data.trip_lock && !lastTripLock) {
+                const reasons = (data.trip_reason && data.trip_reason.length)
+                    ? data.trip_reason.join('\n\n') : 'Parameter melewati batas aman.';
+                el('trip-modal-desc').innerText = reasons;
+                el('tripModal').style.display = 'flex';
+                addLog('#E74C3C', 'AUTO SHUTDOWN: Motor dipaksa mati karena melewati threshold. Reset alarm sebelum START.');
+                addLiveHistoryRow(nowStr, parseFloat(data.temp_de).toFixed(1), parseFloat(data.temp_nde).toFixed(1), data.rpm, parseFloat(data.vib).toFixed(1), 'STOPPED');
+            }
+            lastTripLock = !!data.trip_lock;
+
+            // ---- Motor STOPPED ----
             if (!isRunning) {
-                document.getElementById('val-temp-de').innerText = '-- °C';
-                document.getElementById('val-temp-nde').innerText = '-- °C';
-                document.getElementById('val-rpm').innerText = '-- RPM';
-                document.getElementById('val-vib').innerText = '-- mm/s';
-                document.getElementById('val-volt').innerText = '-- V';
-                document.getElementById('val-curr').innerText = '-- A';
-                cardTempDe.classList.add("off"); cardTempNde.classList.add("off"); cardRpm.classList.add("off"); cardVib.classList.add("off");
-                cardVolt.classList.add("off"); cardCurr.classList.add("off"); cardRuntime.classList.add("off");
-                if (alarmRequiresReset) {
-                    statusBadge.innerText = "TRIP / LOCKED"; statusBadge.className = "status-badge status-trip";
-                    systemStateLabel.innerText = "TRIP (RESET REQUIRED)"; systemStateLabel.style.color = "#E74C3C";
+                allCards.forEach(id => setCard(id, 'off'));
+                el('val-temp-de').innerText = '-- °C';
+                el('val-temp-nde').innerText = '-- °C';
+                el('val-rpm').innerText = '-- RPM';
+                el('val-vib').innerText = '-- mm/s';
+                el('val-volt').innerText = '-- V';
+                el('val-curr').innerText = '-- A';
+                if (data.trip_lock) {
+                    statusBadge.innerText = 'TRIP / LOCKED'; statusBadge.className = 'status-badge status-trip';
+                    stateLabel.innerText = 'TRIP (RESET REQUIRED)';
                 } else {
-                    statusBadge.innerText = "STANDBY"; statusBadge.className = "status-badge status-off";
-                    systemStateLabel.innerText = "OFFLINE (STOPPED)"; systemStateLabel.style.color = "#E74C3C";
+                    statusBadge.innerText = 'STANDBY'; statusBadge.className = 'status-badge status-off';
+                    stateLabel.innerText = 'OFFLINE (STOPPED)';
                 }
-                document.getElementById('mode-btn').innerText = systemMode;
+                stateLabel.style.color = '#E74C3C';
                 updateBearingCondition(true, 0, 0, 0, 0);
-                db.ref('motor_status').set({ temp_de: 0, temp_nde: 0, rpm: 0, vib: 0, status: alarmRequiresReset ? "TRIP_LOCKED" : "STOPPED", timestamp: new Date().toISOString() });
+                writeFirebase({ temp_de: 0, temp_nde: 0, rpm: 0, vib: 0, volt: 0, curr: 0,
+                                status: data.trip_lock ? 'TRIP_LOCKED' : 'STOPPED', timestamp: data.timestamp });
                 return;
             }
 
-            systemStateLabel.innerText = "ONLINE (FIREBASE)"; systemStateLabel.style.color = "#22c55e";
-            let dummyTempDe = (65 + Math.random() * 10).toFixed(1);
-            let dummyTempNde = (63 + Math.random() * 10).toFixed(1);
-            let dummyRpm = Math.floor(1380 + Math.random() * 40);
-            let dummyVib = (3.5 + Math.random() * 1.5).toFixed(1);
-            let dummyVolt = Math.round((thresholdVoltMin + thresholdVoltMax) / 2 + (Math.random() * 6 - 3));
-            let dummyCurr = (thresholdCurr * 0.62 + Math.random() * (thresholdCurr * 0.05)).toFixed(2);
-            document.getElementById('val-temp-de').innerText = dummyTempDe + ' °C';
-            document.getElementById('val-temp-nde').innerText = dummyTempNde + ' °C';
-            document.getElementById('val-rpm').innerText = dummyRpm + ' RPM';
-            document.getElementById('val-vib').innerText = dummyVib + ' mm/s';
-            document.getElementById('val-volt').innerText = dummyVolt + ' V';
-            document.getElementById('val-curr').innerText = dummyCurr + ' A';
-            document.getElementById('mode-btn').innerText = systemMode;
-            db.ref('motor_status').set({ temp_de: parseFloat(dummyTempDe), temp_nde: parseFloat(dummyTempNde), rpm: dummyRpm, vib: parseFloat(dummyVib), status: "RUNNING", timestamp: new Date().toISOString() });
+            // ---- Motor RUNNING ----
+            stateLabel.innerText = 'ONLINE (SOCKET.IO)'; stateLabel.style.color = '#22c55e';
 
-            let tripMessages = [];
-            let tempDeVal = parseFloat(dummyTempDe);
-            if (tempDeVal > thresholdTempDe) { cardTempDe.classList.add("trip"); if (!isDeTempTripAcknowledged) tripMessages.push(`Suhu DE Bearing Terlalu Tinggi: ${dummyTempDe}°C (Limit: ${thresholdTempDe}°C)`); }
-            else if (tempDeVal >= (thresholdTempDe * 0.90)) { cardTempDe.classList.add("warning"); showToast(`⚠️ PERINGATAN: Suhu DE Bearing Mendekati Batas (${dummyTempDe}°C)!`); }
-            else { cardTempDe.classList.add("normal"); isDeTempTripAcknowledged = false; }
+            const tempDeVal = parseFloat(data.temp_de);
+            const tempNdeVal = parseFloat(data.temp_nde);
+            const rpmVal = parseInt(data.rpm);
+            const vibVal = parseFloat(data.vib);
+            const voltVal = parseFloat(data.volt);
+            const currVal = parseFloat(data.curr);
 
-            let tempNdeVal = parseFloat(dummyTempNde);
-            if (tempNdeVal > thresholdTempNde) { cardTempNde.classList.add("trip"); if (!isNdeTempTripAcknowledged) tripMessages.push(`Suhu NDE Bearing Terlalu Tinggi: ${dummyTempNde}°C (Limit: ${thresholdTempNde}°C)`); }
-            else if (tempNdeVal >= (thresholdTempNde * 0.90)) { cardTempNde.classList.add("warning"); showToast(`⚠️ PERINGATAN: Suhu NDE Bearing Mendekati Batas (${dummyTempNde}°C)!`); }
-            else { cardTempNde.classList.add("normal"); isNdeTempTripAcknowledged = false; }
+            el('val-temp-de').innerText = tempDeVal.toFixed(1) + ' °C';
+            el('val-temp-nde').innerText = tempNdeVal.toFixed(1) + ' °C';
+            el('val-rpm').innerText = rpmVal + ' RPM';
+            el('val-vib').innerText = vibVal.toFixed(1) + ' mm/s';
+            el('val-volt').innerText = voltVal + ' V';
+            el('val-curr').innerText = currVal.toFixed(2) + ' A';
 
-            let rpmVal = parseFloat(dummyRpm);
-            if (rpmVal > thresholdRpm) { cardRpm.classList.add("trip"); tripMessages.push(`RPM Motor Berlebihan (Overspeed): ${dummyRpm} RPM (Limit: ${thresholdRpm} RPM)`); }
-            else if (rpmVal >= (thresholdRpm * 0.95)) { cardRpm.classList.add("warning"); }
-            else { cardRpm.classList.add("normal"); }
+            writeFirebase({ temp_de: tempDeVal, temp_nde: tempNdeVal, rpm: rpmVal, vib: vibVal,
+                            volt: voltVal, curr: currVal, status: 'RUNNING', timestamp: data.timestamp });
 
-            let vibVal = parseFloat(dummyVib);
-            if (vibVal > thresholdVib) { cardVib.classList.add("trip"); if (!isVibTripAcknowledged) tripMessages.push(`Getaran Motor Berlebihan: ${dummyVib} mm/s (Limit: ${thresholdVib} mm/s)`); }
-            else if (vibVal >= (thresholdVib * 0.85)) { cardVib.classList.add("warning"); showToast(`⚠️ PERINGATAN: Getaran Mendekati Batas (${dummyVib} mm/s)!`); }
-            else { cardVib.classList.add("normal"); isVibTripAcknowledged = false; }
+            const voltBand = Math.max(2, (thresholdVoltMax - thresholdVoltMin) * 0.1);
+            let stVolt = 'normal';
+            if (voltVal < thresholdVoltMin || voltVal > thresholdVoltMax) stVolt = 'trip';
+            else if (voltVal <= thresholdVoltMin + voltBand || voltVal >= thresholdVoltMax - voltBand) stVolt = 'warning';
 
-            let voltVal = parseFloat(dummyVolt);
-            const voltWarnBand = Math.max(2, (thresholdVoltMax - thresholdVoltMin) * 0.1);
-            if (voltVal < thresholdVoltMin || voltVal > thresholdVoltMax) {
-                cardVolt.classList.add("trip");
-                if (!isVoltTripAcknowledged) {
-                    if (voltVal < thresholdVoltMin) tripMessages.push(`Undervoltage: ${dummyVolt} V (Min: ${thresholdVoltMin} V)`);
-                    else tripMessages.push(`Overvoltage: ${dummyVolt} V (Max: ${thresholdVoltMax} V)`);
-                }
-            } else if (voltVal <= thresholdVoltMin + voltWarnBand || voltVal >= thresholdVoltMax - voltWarnBand) {
-                cardVolt.classList.add("warning");
-                showToast(`⚠️ PERINGATAN: Voltage mendekati batas (${dummyVolt} V)!`);
-            } else { cardVolt.classList.add("normal"); isVoltTripAcknowledged = false; }
-
-            let currVal = parseFloat(dummyCurr);
-            if (currVal > thresholdCurr) { cardCurr.classList.add("trip"); if (!isCurrTripAcknowledged) tripMessages.push(`Overcurrent: ${dummyCurr} A (Limit: ${thresholdCurr} A)`); }
-            else if (currVal >= (thresholdCurr * 0.85)) { cardCurr.classList.add("warning"); showToast(`⚠️ PERINGATAN: Current Mendekati Batas (${dummyCurr} A)!`); }
-            else { cardCurr.classList.add("normal"); isCurrTripAcknowledged = false; }
-
-            cardRuntime.classList.add("normal");
+            const st = {
+                'card-temp-de': classify(tempDeVal, thresholdTempDe, 0.90),
+                'card-temp-nde': classify(tempNdeVal, thresholdTempNde, 0.90),
+                'card-rpm': classify(rpmVal, thresholdRpm, 0.95),
+                'card-vib': classify(vibVal, thresholdVib, 0.85),
+                'card-volt': stVolt,
+                'card-curr': classify(currVal, thresholdCurr, 0.85),
+                'card-runtime': 'normal'
+            };
+            Object.keys(st).forEach(id => setCard(id, st[id]));
             updateBearingCondition(false, tempDeVal, tempNdeVal, rpmVal, vibVal);
 
-            if (tempDeVal > thresholdTempDe || tempNdeVal > thresholdTempNde || rpmVal > thresholdRpm || vibVal > thresholdVib || voltVal < thresholdVoltMin || voltVal > thresholdVoltMax || currVal > thresholdCurr) {
-                statusBadge.innerText = "TRIP / ALARM"; statusBadge.className = "status-badge status-trip";
-                addLiveHistoryRow(currentTimeStr, dummyTempDe, dummyTempNde, dummyRpm, dummyVib, "STOPPED");
-                if (tripMessages.length > 0) {
-                    document.getElementById('trip-modal-desc').innerText = tripMessages.join("\n\n");
-                    if (isRunning) {
-                        isRunning = false;
-                        alarmRequiresReset = true;
-                        fetch('/control?cmd=trip').then(r => r.text()).catch(e => console.error('Error:', e));
-                        const timeStr = new Date().toLocaleTimeString();
-                        logMessages.push(`<span style="color: #E74C3C;">[${timeStr}] AUTO SHUTDOWN: Motor dipaksa mati karena melewati threshold. Reset alarm sebelum START.</span>`);
-                        if (logMessages.length > 30) logMessages.shift();
-                        const logContainer = document.getElementById('log-container');
-                        logContainer.innerHTML = logMessages.join('<br>');
-                        logContainer.scrollTop = logContainer.scrollHeight;
-                    }
-                    document.getElementById('tripModal').style.display = 'flex';
-                }
-            } else if (tempDeVal >= (thresholdTempDe * 0.90) || tempNdeVal >= (thresholdTempNde * 0.90) || rpmVal >= (thresholdRpm * 0.95) || vibVal >= (thresholdVib * 0.85) || voltVal <= thresholdVoltMin + voltWarnBand || voltVal >= thresholdVoltMax - voltWarnBand || currVal >= (thresholdCurr * 0.85)) {
-                statusBadge.innerText = "WARNING"; statusBadge.className = "status-badge status-warning";
-                addLiveHistoryRow(currentTimeStr, dummyTempDe, dummyTempNde, dummyRpm, dummyVib, "NORMAL");
+            const states = Object.values(st);
+            let rowStatus = 'NORMAL';
+            if (states.includes('trip')) {
+                statusBadge.innerText = 'TRIP / ALARM'; statusBadge.className = 'status-badge status-trip';
+                rowStatus = 'ALARM';
+            } else if (states.includes('warning')) {
+                statusBadge.innerText = 'WARNING'; statusBadge.className = 'status-badge status-warning';
+                rowStatus = 'WARNING';
+                toastThrottled('⚠️ PERINGATAN: Parameter mendekati batas limit aman!');
             } else {
-                statusBadge.innerText = "RUNNING"; statusBadge.className = "status-badge status-normal";
-                addLiveHistoryRow(currentTimeStr, dummyTempDe, dummyTempNde, dummyRpm, dummyVib, "NORMAL");
+                statusBadge.innerText = 'RUNNING'; statusBadge.className = 'status-badge status-normal';
             }
+            addLiveHistoryRow(nowStr, tempDeVal.toFixed(1), tempNdeVal.toFixed(1), rpmVal, vibVal.toFixed(1), rowStatus);
 
-            tempChart.data.datasets[0].data.shift(); tempChart.data.datasets[0].data.push(dummyTempDe);
-            tempChart.data.datasets[1].data.shift(); tempChart.data.datasets[1].data.push(dummyTempNde);
+            // Update grafik
+            tempChart.data.datasets[0].data.shift(); tempChart.data.datasets[0].data.push(tempDeVal);
+            tempChart.data.datasets[1].data.shift(); tempChart.data.datasets[1].data.push(tempNdeVal);
             tempChart.update('none');
-            rpmChart.data.datasets[0].data.shift(); rpmChart.data.datasets[0].data.push(dummyRpm); rpmChart.update('none');
-            vibChart.data.datasets[0].data.shift(); vibChart.data.datasets[0].data.push(dummyVib); vibChart.update('none');
+            rpmChart.data.datasets[0].data.shift(); rpmChart.data.datasets[0].data.push(rpmVal); rpmChart.update('none');
+            vibChart.data.datasets[0].data.shift(); vibChart.data.datasets[0].data.push(vibVal); vibChart.update('none');
+        }
+
+        function addLiveHistoryRow(timestamp, tempDe, tempNde, rpm, vib, status) {
+            const tableBody = document.getElementById('history-live-body');
+            const statusColor = (status === 'NORMAL') ? '#22c55e' : (status === 'WARNING' ? '#f59e0b' : '#ef4444');
+            const parts = timestamp.split(" ");
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `<td>${parts[0] || ""}</td><td>${parts[1] || ""}</td><td style="font-weight: bold; color: ${statusColor};">${status}</td><td>${tempDe} °C</td><td>${tempNde} °C</td><td>${rpm}</td><td>${vib} mm/s</td>`;
+            tableBody.appendChild(newRow);
+            if (tableBody.rows.length > 15) tableBody.deleteRow(0);
+            const container = document.querySelector('.history-live-box');
+            if (container) container.scrollTop = container.scrollHeight;
         }
 
         function triggerControl(cmd) {
-            const timeStr = new Date().toLocaleTimeString();
             if (cmd === 'start' && alarmRequiresReset) {
                 document.getElementById('startBlockedModal').style.display = 'flex';
                 return;
             }
-            fetch(`/control?cmd=${cmd}`).then(r => r.text()).then(result => console.log(result)).catch(e => console.error('Error:', e));
-            if (cmd === 'start') {
-                isRunning = true;
-                logMessages.push(`<span style="color: #2ECC71;">[${timeStr}] Motor manually STARTED.</span>`);
-            } else if (cmd === 'stop') {
-                isRunning = false;
-                document.getElementById('tripModal').style.display = 'none';
-                addLiveHistoryRow(new Date().toISOString().replace('T', ' ').substring(0, 19), "0.0", "0.0", "0", "0.0", "STOPPED");
-                logMessages.push(`<span style="color: #E74C3C;">[${timeStr}] Motor manually STOPPED.</span>`);
-            } else if (cmd === 'reset') {
-                isDeTempTripAcknowledged = true; isNdeTempTripAcknowledged = true; isVibTripAcknowledged = true;
-                isVoltTripAcknowledged = true; isCurrTripAcknowledged = true;
-                alarmRequiresReset = false;
-                document.getElementById('tripModal').style.display = 'none';
-                document.getElementById('startBlockedModal').style.display = 'none';
-                runtimeSeconds = 0;
-                applyRuntimeDisplay();
-                logMessages.push(`<span style="color: #F1C40F;">[${timeStr}] Alarms RESET by operator. Running time reset to 00:00:00. Start motor diizinkan.</span>`);
-            } else if (cmd === 'toggle_mode') {
-                systemMode = systemMode === "AUTO" ? "MANUAL" : "AUTO";
-                logMessages.push(`<span style="color: #3498DB;">[${timeStr}] Mode switched to ${systemMode}.</span>`);
-            }
-            if (logMessages.length > 30) logMessages.shift();
-            const logContainer = document.getElementById('log-container');
-            logContainer.innerHTML = logMessages.join('<br>');
-            logContainer.scrollTop = logContainer.scrollHeight;
+            fetch('/control', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ cmd: cmd })
+            }).then(async r => {
+                let d = {};
+                try { d = await r.json(); } catch (e) {}
+                if (!r.ok || d.error) {
+                    if (cmd === 'start' && r.status === 403) {
+                        alarmRequiresReset = true;
+                        document.getElementById('startBlockedModal').style.display = 'flex';
+                    } else {
+                        alert(d.error || ('Perintah gagal (' + r.status + ')'));
+                    }
+                    return;
+                }
+                if (cmd === 'start') {
+                    addLog('#2ECC71', 'Motor manually STARTED.');
+                } else if (cmd === 'stop') {
+                    document.getElementById('tripModal').style.display = 'none';
+                    addLiveHistoryRow(new Date().toISOString().replace('T', ' ').substring(0, 19), '0.0', '0.0', '0', '0.0', 'STOPPED');
+                    addLog('#E74C3C', 'Motor manually STOPPED.');
+                } else if (cmd === 'reset') {
+                    alarmRequiresReset = false;
+                    document.getElementById('tripModal').style.display = 'none';
+                    document.getElementById('startBlockedModal').style.display = 'none';
+                    runtimeSeconds = 0;
+                    applyRuntimeDisplay();
+                    addLog('#F1C40F', 'Alarms RESET by operator. Running time reset to 00:00:00. Start motor diizinkan.');
+                } else if (cmd === 'toggle_mode') {
+                    addLog('#3498DB', 'Mode switched.');
+                }
+            }).catch(e => console.error('Error:', e));
         }
-
-        setInterval(simulateLiveData, 2000);
     </script>
     <script>
         (function () {
@@ -1210,8 +1317,8 @@
                 pill.textContent = label.textContent;
                 pill.className = 'mid-main-pill' +
                     (badge.classList.contains('warning') ? ' warning' :
-                     badge.classList.contains('trip') ? ' trip' :
-                     badge.classList.contains('off') ? ' off' : '');
+                    badge.classList.contains('trip') ? ' trip' :
+                    badge.classList.contains('off') ? ' off' : '');
             };
             new MutationObserver(sync).observe(badge, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true, characterData: true });
             sync();
