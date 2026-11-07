@@ -183,12 +183,13 @@ def generate_yolo_stream():
 
 
 def generate_raw_stream():
-    """Stream mentah (tanpa YOLO, tanpa mirror) untuk halaman dataset."""
+    """Stream mentah (tanpa YOLO) untuk halaman dataset; di-flip agar tidak mirror."""
     while True:
         frame = camera.get_frame()
         if frame is None:
             time.sleep(0.05)
             continue
+        frame = cv2.flip(frame, 1)  # koreksi kamera yang mengirim gambar mirror
         jpg = _encode_jpeg(frame)
         if jpg:
             yield _mjpeg_chunk(jpg)
@@ -218,6 +219,7 @@ def snapshot():
         time.sleep(0.05)
     if frame is None:
         return jsonify({"error": "Kamera tidak tersedia"}), 503
+    frame = cv2.flip(frame, 1)  # samakan dengan /raw_feed
     jpg = _encode_jpeg(frame, 92)
     if not jpg:
         return jsonify({"error": "Gagal encode gambar"}), 500
@@ -330,7 +332,7 @@ def snapshot_state():
 
 
 def emit_motor_data():
-    """Update sensor, cek proteksi di SERVER, lalu broadcast tiap 500 ms."""
+    """Update sensor, cek proteksi di SERVER, lalu broadcast tiap 1 detik."""
     while True:
         try:
             with state_lock:
@@ -343,7 +345,7 @@ def emit_motor_data():
             socketio.emit('motor_data', data)
         except Exception as e:
             print(f"Error emitting data: {e}")
-        socketio.sleep(0.5)
+        socketio.sleep(1.0)
 
 
 socketio.start_background_task(emit_motor_data)

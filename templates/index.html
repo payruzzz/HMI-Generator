@@ -286,6 +286,11 @@
         .history-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 8px; margin-top: 8px; }
         .history-table-container { height: 140px; overflow-y: auto; border: 1px solid #163042; border-radius: 6px; }
         .history-live-box { height: 100%; overflow-y: auto; }
+        .history-split { display: grid; grid-template-rows: 1fr 1fr; gap: 6px; height: 240px; }
+        .history-half { display: flex; flex-direction: column; min-height: 0; }
+        .history-half-title { font-size: 10px; font-weight: 800; color: var(--muted); letter-spacing: .5px; margin-bottom: 2px; }
+        .history-scroll { flex: 1; min-height: 0; overflow-y: auto; border: 1px solid #163042; border-radius: 6px; }
+        .history-scroll.history-live-box { height: auto; }
         table.history-table { width: 100%; border-collapse: collapse; font-size: 10px; }
         table.history-table th { background: #0a1823; color: var(--muted); padding: 4px 6px; position: sticky; top: 0; text-align: left; }
         table.history-table td { padding: 4px 6px; border-bottom: 1px solid #163042; color: #dbeafe; }
@@ -309,7 +314,7 @@
 
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 1000; justify-content: center; align-items: center; }
         .modal-card, .trip-modal-card, .confirm-modal-card { background: #0d1c28; border: 1px solid var(--border); border-radius: 10px; padding: 20px; width: 500px; }
-        .trip-modal-card { width: 420px; border: 2px solid var(--red); text-align: center; }
+        .trip-modal-card { width: max-content; max-width: 92vw; padding: 20px 28px; border: 2px solid var(--red); text-align: center; }
         .confirm-modal-card { width: 420px; border: 2px solid #3b82f6; text-align: center; }
         .modal-inputs-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
         .modal-input-group label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 4px; font-weight: 700; }
@@ -322,7 +327,7 @@
         .btn-modal-no { background: #dc2626; }
         .trip-modal-card h2 { color: var(--red); }
         .confirm-modal-card h2 { color: #60a5fa; }
-        #trip-modal-desc { white-space: pre-line; }
+        #trip-modal-desc { white-space: pre; text-align: left; width: fit-content; margin-left: auto; margin-right: auto; }
     </style>
 </head>
 <body>
@@ -539,36 +544,44 @@
             <div class="history-header">
                 <h3><span class="title-icon">▤</span>MOTOR PERFORMANCE HISTORY</h3>
             </div>
-            <div class="history-table-container">
-                <table class="history-table" id="history-excel-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Time</th>
-                            <th>DE Temp (°C)</th>
-                            <th>NDE Temp (°C)</th>
-                            <th>RPM</th>
-                            <th>Vib (mm/s)</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="history-table-body"></tbody>
-                </table>
-                <div class="history-live-box">
-                    <table class="history-table" id="history-live-table">
-                        <thead>
-                            <tr>
-                                <th>No</th>
-                                <th>Time</th>
-                                <th>Event</th>
-                                <th>DE Temp</th>
-                                <th>NDE Temp</th>
-                                <th>RPM</th>
-                                <th>Vib (mm/s)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="history-live-body"></tbody>
-                    </table>
+            <div class="history-split">
+                <div class="history-half">
+                    <div class="history-half-title">HISTORY</div>
+                    <div class="history-scroll">
+                        <table class="history-table" id="history-excel-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>DE Temp (°C)</th>
+                                    <th>NDE Temp (°C)</th>
+                                    <th>RPM</th>
+                                    <th>Vib (mm/s)</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="history-half">
+                    <div class="history-half-title">LIVE</div>
+                    <div class="history-scroll history-live-box">
+                        <table class="history-table" id="history-live-table">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Time</th>
+                                    <th>Event</th>
+                                    <th>DE Temp</th>
+                                    <th>NDE Temp</th>
+                                    <th>RPM</th>
+                                    <th>Vib (mm/s)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-live-body"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

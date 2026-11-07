@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dataset Images - Motor HMI</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -135,12 +136,12 @@
             background: #000;
             border-radius: 6px;
             overflow: hidden;
-            height: 400px;
+            aspect-ratio: 16 / 9;
         }
         #captureVideo {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
         }
         #annotationCanvas {
             position: absolute;
@@ -194,7 +195,7 @@
                 <h2>Camera Capture & Annotation</h2>
                 <div class="capture-area">
                     <div class="video-wrapper">
-                        <video id="captureVideo" autoplay playsinline style="display:block;"></video>
+                        <img id="captureVideo" src="/raw_feed" alt="Live camera" style="display:block;">
                         <canvas id="annotationCanvas" style="display:none;"></canvas>
                     </div>
                     <div class="label-row">
@@ -209,12 +210,10 @@
                         <button type="button" class="btn" id="addClassBtn" style="padding:4px 10px; font-size:12px;">+ Add Class</button>
                     </div>
                     <div class="btn-row">
-                        <button class="btn btn-green" id="startCameraBtn">Start Camera</button>
-                        <button class="btn btn-amber" id="captureBtn" disabled>Capture Frame</button>
+                        <button class="btn btn-amber" id="captureBtn">Capture Frame</button>
                         <button class="btn" id="newCaptureBtn" style="display:none;">New Capture</button>
                         <button class="btn" id="undoBoxBtn" disabled>Undo Box</button>
                         <button class="btn btn-green" id="saveAnnotationBtn" disabled>Save to Dataset</button>
-                        <button class="btn btn-red" id="stopCameraBtn" disabled>Stop Camera</button>
                     </div>
                     <div class="box-list" id="boxList">
                         <div style="color: var(--muted); text-align: center;">Draw boxes on image after capture</div>
@@ -226,6 +225,7 @@
             <div class="card">
                 <h2>Upload Existing Images</h2>
                 <form action="/upload_dataset" method="post" enctype="multipart/form-data" class="upload-area">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="file" name="images" multiple accept=".png,.jpg,.jpeg,.gif,.bmp,.webp" required>
                     <button type="submit" class="btn">Upload Images</button>
                 </form>
@@ -251,6 +251,7 @@
                     <div class="thumb-info">
                         <div class="thumb-name">{{ img }}</div>
                         <form method="post" action="/delete_dataset_image/{{ img }}" style="margin:0;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="delete-btn" onclick="return confirm('Delete {{ img }}?');">Delete</button>
                         </form>
                     </div>
@@ -265,23 +266,16 @@
         </div>
     </div>
     <script>
-        (function init() {
-            const protocol = location.protocol;
-            const hostname = location.hostname;
-            const isSecure = protocol === 'https:' || hostname === 'localhost' || hostname === '127.0.0.1';
-            
-            if (!isSecure) {
-                const el = document.getElementById('cameraError');
-                el.innerHTML = `⚠️ Camera requires secure context.<br>Current: ${protocol}//${hostname}<br>Use: <a href="http://localhost:${location.port}/dataset" style="color:var(--cyan)">http://localhost:${location.port}/dataset</a>`;
-                el.style.display = 'block';
-                document.getElementById('startCameraBtn').disabled = true;
-            }
-        })();
         const video = document.getElementById('captureVideo');
+        const videoWrapper = document.querySelector('.video-wrapper');
+
+        // Samakan rasio kotak dengan rasio asli gambar kamera agar tidak gepeng
+        function matchRatio(w, h) {
+            if (w && h) videoWrapper.style.aspectRatio = w + ' / ' + h;
+        }
+        video.addEventListener('load', () => matchRatio(video.naturalWidth, video.naturalHeight));
         const canvas = document.getElementById('annotationCanvas');
         const ctx = canvas.getContext('2d');
-        const startCameraBtn = document.getElementById('startCameraBtn');
-        const stopCameraBtn = document.getElementById('stopCameraBtn');
         const captureBtn = document.getElementById('captureBtn');
         const undoBoxBtn = document.getElementById('undoBoxBtn');
         const saveAnnotationBtn = document.getElementById('saveAnnotationBtn');
@@ -289,7 +283,6 @@
         const classLabel = document.getElementById('classLabel');
         const addClassBtn = document.getElementById('addClassBtn');
 
-        let stream = null;
         let capturedImageData = null;
         let capturedImage = null;
         let boxes = [];
@@ -322,53 +315,29 @@
         classLabel.addEventListener('change', updateClassRegistry);
         classLabel.addEventListener('blur', updateClassRegistry);
 
-        startCameraBtn.addEventListener('click', async () => {
-            try {
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    throw new Error('Camera API not supported in this browser');
-                }
-                stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
-                video.srcObject = stream;
-                video.onloadedmetadata = () => {
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                };
-                startCameraBtn.disabled = true;
-                stopCameraBtn.disabled = false;
-                captureBtn.disabled = false;
-            } catch (err) {
-                alert('Camera access denied: ' + err.message);
-                document.getElementById('cameraError').textContent = 'Camera access denied: ' + err.message;
-                document.getElementById('cameraError').style.display = 'block';
-            }
-        });
-
-        stopCameraBtn.addEventListener('click', () => {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                video.srcObject = null;
-                stream = null;
-            }
-            startCameraBtn.disabled = false;
-            stopCameraBtn.disabled = true;
+        captureBtn.addEventListener('click', async () => {
             captureBtn.disabled = true;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            boxes = [];
-            capturedImageData = null;
-            updateBoxList();
-        });
+            try {
+                const res = await fetch('/snapshot', { cache: 'no-store' });
+                if (!res.ok) throw new Error('Kamera server tidak tersedia (' + res.status + ')');
+                const blob = await res.blob();
+                capturedImageData = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = () => reject(new Error('Gagal membaca gambar'));
+                    reader.readAsDataURL(blob);
+                });
+            } catch (err) {
+                alert('Capture gagal: ' + err.message);
+                captureBtn.disabled = false;
+                return;
+            }
 
-        captureBtn.addEventListener('click', () => {
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = video.videoWidth;
-            tempCanvas.height = video.videoHeight;
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.drawImage(video, 0, 0);
-            capturedImageData = tempCanvas.toDataURL('image/jpeg', 0.9);
-            
-            // Pre-load image once
             capturedImage = new Image();
             capturedImage.onload = () => {
+                canvas.width = capturedImage.naturalWidth;
+                canvas.height = capturedImage.naturalHeight;
+                matchRatio(canvas.width, canvas.height);
                 ctx.drawImage(capturedImage, 0, 0, canvas.width, canvas.height);
             };
             capturedImage.src = capturedImageData;
@@ -376,9 +345,8 @@
             boxes = [];
             updateBoxList();
             saveAnnotationBtn.disabled = false;
-            captureBtn.disabled = true;
 
-            // Freeze live video: hide it and show static annotation canvas
+            // Bekukan tampilan live: sembunyikan stream, tampilkan canvas anotasi
             video.style.display = 'none';
             canvas.style.display = 'block';
             canvas.style.cursor = 'crosshair';
@@ -508,7 +476,10 @@
             try {
                 const response = await fetch('/capture_dataset', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+                    },
                     body: JSON.stringify(payload)
                 });
                 const result = await response.json();
